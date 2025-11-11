@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Certificats Médicaux Pro</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            color: #2563eb;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 1024px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .card h2 {
+            font-size: 20px;
+            margin-bottom: 20px;
+            color: #1f2937;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            color: #374151;
+            font-size: 14px;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        @media (max-width: 640px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .signature-tabs {
+            margin-bottom: 16px;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .tab-button.active {
+            background: #2563eb;
+            color: white;
+            border-color: #2563eb;
+        }
+
+        .tab-button:hover:not(.active) {
+            background: #f3f4f6;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .signature-canvas-container {
+            border: 2px dashed #d1d5db;
+            border-radius: 6px;
+            background: white;
+            padding: 4px;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 160px;
+            cursor: crosshair;
+            border-radius: 4px;
+        }
+
+        .signature-upload {
+            border: 2px dashed #d1d5db;
+            border-radius: 6px;
+            padding: 32px;
+            text-align: center;
+            background: white;
+        }
+
+        .signature-preview {
+            max-height: 160px;
+            margin: 0 auto;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: #2563eb;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1d4ed8;
+        }
+
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #d1d5db;
+        }
+
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+
+        .certificate-preview {
+            background: white;
+            padding: 48px;
+            font-family: Georgia, serif;
+            color: #000;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            min-height: 600px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .cert-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 40px;
+        }
+
+        .doctor-info {
+            line-height: 1.6;
+        }
+
+        .doctor-name {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .doctor-details {
+            font-size: 12px;
+        }
+
+        .cert-date {
+            font-size: 12px;
+            text-align: right;
+        }
+
+        .cert-body {
+            margin-bottom: 40px;
+            min-height: 250px;
+        }
+
+        .cert-text {
+            margin-bottom: 24px;
+            line-height: 1.8;
+        }
+
+        .patient-info {
+            margin-top: 20px;
+        }
+
+        .patient-name {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .cert-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-top: 60px;
+        }
+
+        .signature-box {
+            border: 2px solid #93c5fd;
+            border-radius: 6px;
+            padding: 16px;
+            width: 200px;
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(37, 99, 235, 0.02);
+        }
+
+        .signature-box img {
+            max-width: 100%;
+            max-height: 100px;
+        }
+
+        .signature-label {
+            text-align: center;
+            font-size: 11px;
+            margin-top: 8px;
+            color: #6b7280;
+        }
+
+        .page-number {
+            text-align: right;
+            font-size: 11px;
+            color: #6b7280;
+            margin-top: 32px;
+        }
+
+        .sticky-preview {
+            position: sticky;
+            top: 20px;
+        }
+
+        .preview-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #1f2937;
+        }
+
+        .icon {
+            width: 18px;
+            height: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>
+                <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                Certificats Médicaux Pro
+            </h1>
+        </div>
+
+        <div class="main-grid">
+            <div>
+                <div class="card">
+                    <h2>Nouveau Certificat Médical</h2>
+                    <form id="certificateForm">
+                        <div class="form-group">
+                            <label for="patientName">Nom du patient *</label>
+                            <input type="text" id="patientName" required placeholder="Mme/M. Nom Prénom">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="patientAddress">Adresse du patient *</label>
+                            <input type="text" id="patientAddress" required placeholder="demeurant 123 rue Example, 75000 Paris">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="certificateText">Contenu du certificat *</label>
+                            <textarea id="certificateText" required></textarea>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="certificateDate">Date *</label>
+                                <input type="date" id="certificateDate" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="location">Lieu *</label>
+                                <input type="text" id="location" required placeholder="Paris">
+                            </div>
+                        </div>
+
+                        <div class="signature-tabs">
+                            <label>Signature</label>
+                            <div class="tab-buttons">
+                                <button type="button" class="tab-button active" data-tab="draw">Dessiner</button>
+                                <button type="button" class="tab-button" data-tab="upload">Importer</button>
+                            </div>
+
+                            <div class="tab-content active" id="draw-tab">
+                                <div class="signature-canvas-container">
+                                    <canvas id="signatureCanvas"></canvas>
+                                </div>
+                                <div class="button-group">
+                                    <button type="button" class="btn-secondary btn-small" id="clearSignature">
+                                        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                        </svg>
+                                        Effacer
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="tab-content" id="upload-tab">
+                                <div class="signature-upload">
+                                    <div id="uploadedSignaturePreview"></div>
+                                    <input type="file" id="signatureUpload" accept="image/*" style="margin-top: 12px;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="button-group">
+                            <button type="button" class="btn-primary" id="generatePDF">
+                                <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                Générer PDF
+                            </button>
+                            <button type="button" class="btn-secondary" id="resetForm">
+                                <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
+                                Réinitialiser
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="sticky-preview">
+                <h3 class="preview-title">Aperçu du certificat</h3>
+                <div class="certificate-preview" id="certificatePreview">
+                    <div class="cert-header">
+                        <div class="doctor-info">
+                            <div class="doctor-name" id="previewDoctorName">Dr Sarah Namer</div>
+                            <div class="doctor-details" id="previewDoctorAddress">45 Boulevard de Cimiez</div>
+                            <div class="doctor-details" id="previewDoctorCity">06000 Nice</div>
+                            <div class="doctor-details" id="previewDoctorPhone">Tél: 04 92 14 83 03</div>
+                        </div>
+                        <div class="cert-date" id="previewDate">Le 09 nov. 2025</div>
+                    </div>
+
+                    <div class="cert-body">
+                        <div class="cert-text" id="previewText">
+                            Je soussigné(e) Docteur Sarah Namer certifie avoir vu ce jour en consultation
+                        </div>
+
+                        <div class="patient-info">
+                            <div class="patient-name" id="previewPatientName"></div>
+                            <div class="doctor-details" id="previewPatientAddress"></div>
+                        </div>
+                    </div>
+
+                    <div class="cert-footer">
+                        <div class="doctor-details" id="previewLocation">Fait à Nice, le 09 nov. 2025</div>
+                        <div>
+                            <div class="signature-box" id="previewSignatureBox">
+                                <span style="font-size: 11px; color: #9ca3af;">Zone de signature</span>
+                            </div>
+                            <div class="signature-label" id="previewSignatureLabel">Dr Sarah Namer</div>
+                        </div>
+                    </div>
+
+                    <div class="page-number">1/1</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration du médecin (modifiable)
+        const doctorInfo = {
+            name: "Dr Sarah Namer",
+            address: "45 Boulevard de Cimiez",
+            city: "Nice",
+            postalCode: "06000",
+            phone: "04 92 14 83 03"
+        };
+
+        // Variables globales
+        let signatureDataUrl = '';
+        let isDrawing = false;
+        const canvas = document.getElementById('signatureCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Initialisation
+        function init() {
+            // Initialiser la date
+            document.getElementById('certificateDate').valueAsDate = new Date();
+            document.getElementById('location').value = doctorInfo.city;
+            document.getElementById('certificateText').value = `Je soussigné(e) Docteur ${doctorInfo.name} certifie avoir vu ce jour en consultation`;
+
+            // Configurer le canvas
+            setupCanvas();
+            
+            // Event listeners
+            setupEventListeners();
+            
+            // Mise à jour initiale de l'aperçu
+            updatePreview();
+        }
+
+        function setupCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * 2;
+            canvas.height = 160 * 2;
+            ctx.scale(2, 2);
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+        }
+
+        function setupEventListeners() {
+            // Tabs
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.addEventListener('click', function() {
+                    const tab = this.dataset.tab;
+                    document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    this.classList.add('active');
+                    document.getElementById(`${tab}-tab`).classList.add('active');
+                });
+            });
+
+            // Canvas drawing
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+            canvas.addEventListener('touchstart', handleTouch);
+            canvas.addEventListener('touchmove', handleTouch);
+            canvas.addEventListener('touchend', stopDrawing);
+
+            // Clear signature
+            document.getElementById('clearSignature').addEventListener('click', clearSignature);
+
+            // Upload signature
+            document.getElementById('signatureUpload').addEventListener('change', handleSignatureUpload);
+
+            // Form inputs
+            document.getElementById('patientName').addEventListener('input', updatePreview);
+            document.getElementById('patientAddress').addEventListener('input', updatePreview);
+            document.getElementById('certificateText').addEventListener('input', updatePreview);
+            document.getElementById('certificateDate').addEventListener('change', updatePreview);
+            document.getElementById('location').addEventListener('change', updatePreview);
+
+            // Buttons
+            document.getElementById('generatePDF').addEventListener('click', generatePDF);
+            document.getElementById('resetForm').addEventListener('click', resetForm);
+        }
+
+        function startDrawing(e) {
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / 2;
+            const y = (e.clientY - rect.top) / 2;
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / 2;
+            const y = (e.clientY - rect.top) / 2;
+            ctx.lineTo(x, y);
+            ctx.stroke();
+        }
+
+        function stopDrawing() {
+            if (isDrawing) {
+                isDrawing = false;
+                signatureDataUrl = canvas.toDataURL();
+                updatePreview();
+            }
+        }
+
+        function handleTouch(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            canvas.dispatchEvent(mouseEvent);
+        }
+
+        function clearSignature() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            signatureDataUrl = '';
+            updatePreview();
+        }
+
+        function handleSignatureUpload(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    signatureDataUrl = event.target.result;
+                    const preview = document.getElementById('uploadedSignaturePreview');
+                    preview.innerHTML = `<img src="${signatureDataUrl}" class="signature-preview">`;
+                    updatePreview();
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('fr-FR', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+            });
+        }
+
+        function updatePreview() {
+            const patientName = document.getElementById('patientName').value;
+            const patientAddress = document.getElementById('patientAddress').value;
+            const certificateText = document.getElementById('certificateText').value;
+            const certificateDate = document.getElementById('certificateDate').value;
+            const location = document.getElementById('location').value;
+
+            document.getElementById('previewPatientName').textContent = patientName || '';
+            document.getElementById('previewPatientAddress').textContent = patientAddress || '';
+            document.getElementById('previewText').textContent = certificateText || 'Je soussigné(e) Docteur certifie avoir vu ce jour en consultation';
+            
+            const formattedDate = certificateDate ? formatDate(certificateDate) : formatDate(new Date().toISOString());
+            document.getElementById('previewDate').textContent = `Le ${formattedDate}`;
+            document.getElementById('previewLocation').textContent = `Fait à ${location || doctorInfo.city}, le ${formattedDate}`;
+
+            // Update signature preview
+            const signatureBox = document.getElementById('previewSignatureBox');
+            if (signatureDataUrl) {
+                signatureBox.innerHTML = `<img src="${signatureDataUrl}" style="max-width: 100%; max-height: 100px;">`;
+            } else {
+                signatureBox.innerHTML = '<span style="font-size: 11px; color: #9ca3af;">Zone de signature</span>';
+            }
+        }
+
+        function generatePDF() {
+            try {
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF();
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const margin = 20;
+                let y = 30;
+
+                // En-tête du docteur
+                pdf.setFontSize(14);
+                pdf.text(doctorInfo.name, margin, y);
+                y += 7;
+
+                pdf.setFontSize(10);
+                pdf.text(doctorInfo.address, margin, y);
+                y += 5;
+                pdf.text(`${doctorInfo.postalCode} ${doctorInfo.city}`, margin, y);
+                y += 5;
+                pdf.text(`Tél: ${doctorInfo.phone}`, margin, y);
+
+                // Date en haut à droite
+                const certificateDate = document.getElementById('certificateDate').value;
+                const dateText = formatDate(certificateDate);
+                pdf.text(`Le ${dateText}`, pageWidth - margin - 40, 30);
+
+                // Contenu du certificat
+                y = 70;
+                const certificateText = document.getElementById('certificateText').value;
+                const textLines = pdf.splitTextToSize(certificateText, pageWidth - 2 * margin);
+                pdf.text(textLines, margin, y);
+                y += textLines.length * 7 + 15;
+
+                // Informations patient
+                const patientName = document.getElementById('patientName').value;
+                const patientAddress = document.getElementById('patientAddress').value;
+
+                if (patientName) {
+                    pdf.setFont('helvetica', 'bold');
+                    pdf.text(patientName, margin, y);
+                    pdf.setFont('helvetica', 'normal');
+                    y += 7;
+                }
+
+                if (patientAddress) {
+                    pdf.text(patientAddress, margin, y);
+                    y += 7;
+                }
+
+                // Bas de page
+                y = pdf.internal.pageSize.getHeight() - 60;
+                const location = document.getElementById('location').value;
+                pdf.text(`Fait à ${location}, le ${dateText}`, margin, y);
+
+                // Signature
+                if (signatureDataUrl) {
+                    try {
+                        const signatureX = pageWidth - margin - 50;
+                        const signatureY = y - 35;
+                        pdf.addImage(signatureDataUrl, 'PNG', signatureX, signatureY, 50, 25);
+                    } catch (error) {
+                        console.error("Erreur lors de l'ajout de la signature:", error);
+                    }
+                }
+
+                // Générer un nom de fichier valide
+                const patientNameForFile = patientName 
+                    ? patientName.replace(/[^a-zA-Z0-9]/g, '_')
+                    : 'patient';
+                const fileName = `certificat_${patientNameForFile}_${certificateDate}.pdf`;
+                
+                pdf.save(fileName);
+                alert('PDF généré avec succès!');
+            } catch (error) {
+                console.error('Erreur lors de la génération du PDF:', error);
+                alert('Erreur lors de la génération du PDF. Veuillez vérifier que tous les champs sont remplis correctement.');
+            }
+        }
+
+        function resetForm() {
+            document.getElementById('certificateForm').reset();
+            document.getElementById('certificateDate').valueAsDate = new Date();
+            document.getElementById('location').value = doctorInfo.city;
+            document.getElementById('certificateText').value = `Je soussigné(e) Docteur ${doctorInfo.name} certifie avoir vu ce jour en consultation`;
+            clearSignature();
+            document.getElementById('uploadedSignaturePreview').innerHTML = '';
+            updatePreview();
+        }
+
+        // Lancer l'application
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
