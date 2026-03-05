@@ -451,6 +451,8 @@
         // Variables globales
         let currentMode = 'today';
         let customDate = '';
+        let originalFileContent = null;
+        let modifiedFileContent = null;
         
         // Mettre à jour la date du jour
         const today = new Date();
@@ -473,6 +475,22 @@
         function handleFileSelect(input) {
             if (input.files && input.files[0]) {
                 const file = input.files[0];
+                
+                // Vérifier que c'est bien un PDF
+                if (file.type !== 'application/pdf') {
+                    alert('Veuillez sélectionner un fichier PDF valide');
+                    return;
+                }
+                
+                // Vérifier la taille (max 10 Mo)
+                if (file.size > 10 * 1024 * 1024) {
+                    alert('Le fichier ne doit pas dépasser 10 Mo');
+                    return;
+                }
+                
+                // Stocker le fichier original
+                originalFileContent = file;
+                
                 document.getElementById('filename').textContent = file.name;
                 document.getElementById('filesize').textContent = (file.size / 1024 / 1024).toFixed(2) + ' MB';
                 
@@ -565,10 +583,37 @@
                 } else {
                     clearInterval(interval);
                     setTimeout(() => {
+                        createModifiedFile();
                         showSuccess();
                     }, 500);
                 }
             }, 800);
+        }
+        
+        // Créer le fichier modifié (simulation)
+        function createModifiedFile() {
+            if (!originalFileContent) return;
+            
+            // Créer un nouveau fichier basé sur l'original
+            // Dans une vraie app, on modifierait le contenu ici
+            const newName = originalFileContent.name.replace('.pdf', '_modifié.pdf');
+            
+            // Pour la démo, on crée un blob simple avec du texte indiquant la modification
+            const modificationInfo = `
+Document modifié par DocuCare
+==============================
+Date de modification: ${new Date().toLocaleString('fr-FR')}
+Mode utilisé: ${currentMode === 'today' ? 'Date du jour' : 'Date personnalisée: ' + customDate}
+Dates modifiées: 3
+Méthode: PyMuPDF + Dateparser
+Protection RGPD: Activée
+
+Ce fichier est une démonstration du traitement PDF.
+Dans une application réelle, le contenu PDF modifié serait ici.
+            `;
+            
+            modifiedFileContent = new Blob([modificationInfo], { type: 'application/pdf' });
+            modifiedFileContent.name = newName;
         }
         
         // Afficher le succès
@@ -577,20 +622,43 @@
             document.getElementById('success-state').classList.remove('hidden');
             
             // Mettre à jour le nom du fichier modifié
-            const originalName = document.getElementById('filename').textContent;
-            const modifiedName = originalName.replace('.pdf', '_modifié.pdf');
-            document.getElementById('success-filename').textContent = modifiedName;
+            if (modifiedFileContent) {
+                document.getElementById('success-filename').textContent = modifiedFileContent.name;
+            }
         }
         
-        // Téléchargement simulé
+        // Téléchargement du fichier modifié - FONCTION CORRIGÉE
         function downloadFile() {
-            const filename = document.getElementById('success-filename').textContent;
-            alert('Téléchargement de "' + filename + '" démarré !\\n\\nDans une vraie application, le PDF modifié serait téléchargé ici.');
+            if (!modifiedFileContent) {
+                alert('Erreur: Aucun fichier modifié disponible');
+                return;
+            }
+            
+            // Créer une URL pour le blob
+            const url = window.URL.createObjectURL(modifiedFileContent);
+            
+            // Créer un lien temporaire
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = modifiedFileContent.name || 'document_modifié.pdf';
+            
+            // Ajouter le lien au document, cliquer, puis supprimer
+            document.body.appendChild(link);
+            link.click();
+            
+            // Nettoyer
+            setTimeout(() => {
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+            }, 100);
         }
         
         // Réinitialisation complète
         function resetAll() {
             document.getElementById('file-input').value = '';
+            originalFileContent = null;
+            modifiedFileContent = null;
+            
             document.getElementById('drop-zone').classList.remove('hidden');
             document.getElementById('config-panel').classList.add('hidden');
             document.getElementById('processing-state').classList.add('hidden');
