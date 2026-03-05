@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Éditeur PDF Médical - Arrêts de Travail</title>
+    <title>Éditeur PDF Direct - Modification In-Place</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -15,151 +15,155 @@
         }
 
         body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #1a1a2e;
             min-height: 100vh;
-            color: #333;
+            color: #fff;
         }
 
         .header {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            padding: 20px;
-            text-align: center;
-            color: white;
-            border-bottom: 1px solid rgba(255,255,255,0.2);
+            background: linear-gradient(90deg, #16213e 0%, #0f3460 100%);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
         }
 
         .header h1 {
-            font-size: 2rem;
-            margin-bottom: 5px;
-        }
-
-        .header p {
-            opacity: 0.9;
-            font-size: 0.9rem;
-        }
-
-        .container {
-            max-width: 1600px;
-            margin: 0 auto;
-            padding: 20px;
-            display: grid;
-            grid-template-columns: 300px 1fr 350px;
-            gap: 20px;
-            height: calc(100vh - 100px);
-        }
-
-        .panel {
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .panel-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 15px;
-            font-weight: 600;
+            font-size: 1.5rem;
             display: flex;
             align-items: center;
             gap: 10px;
         }
 
-        .panel-content {
-            padding: 20px;
-            overflow-y: auto;
-            flex: 1;
-        }
-
-        .upload-area {
-            border: 2px dashed #ccc;
-            border-radius: 10px;
-            padding: 30px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-            margin-bottom: 20px;
-        }
-
-        .upload-area:hover {
-            border-color: #667eea;
-            background: #f0f2ff;
-        }
-
-        .upload-area.dragover {
-            border-color: #764ba2;
-            background: #e8ebff;
-            transform: scale(1.02);
+        .header-actions {
+            display: flex;
+            gap: 10px;
         }
 
         .btn {
-            width: 100%;
-            padding: 12px;
+            padding: 10px 20px;
             border: none;
-            border-radius: 8px;
+            border-radius: 6px;
             cursor: pointer;
             font-size: 14px;
             font-weight: 600;
             transition: all 0.3s;
-            margin-bottom: 10px;
             display: flex;
             align-items: center;
-            justify-content: center;
             gap: 8px;
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #e94560;
             color: white;
         }
 
         .btn-primary:hover {
+            background: #c13651;
             transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn-success {
-            background: #28a745;
-            color: white;
-        }
-
-        .btn-success:hover {
-            background: #218838;
-            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(233, 69, 96, 0.4);
         }
 
         .btn-secondary {
-            background: #6c757d;
+            background: #533483;
             color: white;
         }
 
-        .pdf-viewer {
-            background: #525659;
-            overflow: auto;
+        .btn-secondary:hover {
+            background: #7b2cbf;
+        }
+
+        .main-container {
+            display: flex;
+            height: calc(100vh - 70px);
+        }
+
+        .toolbar {
+            width: 60px;
+            background: #16213e;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 0;
+            gap: 15px;
+            border-right: 1px solid #0f3460;
+        }
+
+        .tool-btn {
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 8px;
+            background: transparent;
+            color: #fff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            transition: all 0.2s;
             position: relative;
-            min-height: 600px;
+        }
+
+        .tool-btn:hover, .tool-btn.active {
+            background: #e94560;
+        }
+
+        .tool-btn::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            left: 50px;
+            background: #000;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+
+        .tool-btn:hover::after {
+            opacity: 1;
+        }
+
+        .workspace {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #2d2d44;
+            overflow: hidden;
+        }
+
+        .pdf-container {
+            flex: 1;
+            overflow: auto;
+            padding: 40px;
             display: flex;
             justify-content: center;
             align-items: flex-start;
-            padding: 20px;
+            background: 
+                radial-gradient(circle at 20% 50%, #2d2d44 0%, transparent 50%),
+                radial-gradient(circle at 80% 50%, #1a1a2e 0%, transparent 50%),
+                #1a1a2e;
         }
 
-        .pdf-page-container {
-            position: relative;
+        .pdf-page {
             background: white;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            position: relative;
             margin: 0 auto;
+            transform-origin: top center;
+            transition: transform 0.3s;
         }
 
         .pdf-canvas {
             display: block;
         }
 
-        .text-overlay {
+        .text-layer {
             position: absolute;
             top: 0;
             left: 0;
@@ -168,305 +172,302 @@
             pointer-events: none;
         }
 
-        .editable-field {
+        /* Style pour les champs éditables - exactement comme le texte original */
+        .pdf-text {
             position: absolute;
-            background: rgba(255, 235, 59, 0.3);
-            border: 2px solid #ffd700;
+            color: transparent;
             cursor: text;
             pointer-events: auto;
-            padding: 2px 5px;
-            min-width: 80px;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
+            caret-color: #e94560;
             outline: none;
-            transition: all 0.2s;
-            white-space: nowrap;
-            overflow: hidden;
+            white-space: pre;
+            transform-origin: bottom left;
         }
 
-        .editable-field:hover {
-            background: rgba(255, 235, 59, 0.6);
-            z-index: 100;
+        .pdf-text:hover {
+            background: rgba(233, 69, 96, 0.1);
         }
 
-        .editable-field:focus {
-            background: white;
-            border-color: #667eea;
-            z-index: 1000;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
+        .pdf-text:focus {
+            background: rgba(233, 69, 96, 0.2);
+            box-shadow: 0 0 0 2px rgba(233, 69, 96, 0.5);
         }
 
-        .field-list {
-            list-style: none;
+        .pdf-text.modified {
+            color: #000 !important;
+            background: rgba(255, 193, 7, 0.3) !important;
         }
 
-        .field-item {
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 10px;
-            border-left: 4px solid #667eea;
-            cursor: pointer;
-            transition: all 0.2s;
+        .selection-box {
+            position: absolute;
+            border: 2px dashed #e94560;
+            background: rgba(233, 69, 96, 0.1);
+            pointer-events: none;
+            display: none;
         }
 
-        .field-item:hover {
-            transform: translateX(5px);
-            background: #e9ecef;
+        .bottom-bar {
+            height: 50px;
+            background: #16213e;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            border-top: 1px solid #0f3460;
         }
 
-        .field-item label {
-            display: block;
-            font-size: 11px;
-            color: #666;
-            text-transform: uppercase;
-            margin-bottom: 4px;
-        }
-
-        .field-item input {
-            width: 100%;
-            border: none;
-            background: transparent;
-            font-size: 14px;
-            font-weight: 600;
-            color: #333;
-            outline: none;
-        }
-
-        .tools-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
+        .zoom-controls {
+            display: flex;
+            align-items: center;
             gap: 10px;
         }
 
-        .tool-btn {
-            padding: 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            background: white;
-            cursor: pointer;
-            text-align: center;
-            transition: all 0.2s;
-        }
-
-        .tool-btn:hover {
-            border-color: #667eea;
-            background: #f0f2ff;
-            transform: translateY(-2px);
-        }
-
-        .tool-btn.active {
-            border-color: #667eea;
-            background: #667eea;
+        .zoom-btn {
+            width: 30px;
+            height: 30px;
+            border: none;
+            border-radius: 4px;
+            background: #0f3460;
             color: white;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .info-panel {
+            position: fixed;
+            right: -350px;
+            top: 70px;
+            width: 350px;
+            height: calc(100vh - 70px);
+            background: #16213e;
+            border-left: 1px solid #0f3460;
+            transition: right 0.3s;
+            padding: 20px;
+            overflow-y: auto;
+            z-index: 100;
+        }
+
+        .info-panel.open {
+            right: 0;
+        }
+
+        .info-panel h3 {
+            margin-bottom: 20px;
+            color: #e94560;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .modification-item {
+            background: #0f3460;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 3px solid #e94560;
+        }
+
+        .modification-item .original {
+            font-size: 12px;
+            color: #888;
+            text-decoration: line-through;
+            margin-bottom: 5px;
+        }
+
+        .modification-item .new {
+            font-size: 14px;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .upload-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+
+        .upload-box {
+            background: #16213e;
+            padding: 60px;
+            border-radius: 20px;
+            text-align: center;
+            border: 2px dashed #533483;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-box:hover {
+            border-color: #e94560;
+            transform: scale(1.05);
+        }
+
+        .upload-box.dragover {
+            background: #0f3460;
+            border-color: #e94560;
+        }
+
+        .hidden {
+            display: none !important;
         }
 
         .notification {
             position: fixed;
-            top: 20px;
+            top: 80px;
             right: 20px;
             padding: 15px 25px;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            background: #16213e;
+            border-left: 4px solid #e94560;
+            border-radius: 8px;
+            color: white;
             transform: translateX(400px);
-            transition: transform 0.3s ease;
-            z-index: 10000;
-            border-left: 4px solid;
+            transition: transform 0.3s;
+            z-index: 1001;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         }
 
         .notification.show {
             transform: translateX(0);
         }
 
-        .notification.success { border-color: #28a745; }
-        .notification.error { border-color: #dc3545; }
-        .notification.info { border-color: #17a2b8; }
-
-        .progress-bar {
+        .toggle-panel {
             position: fixed;
-            top: 0;
-            left: 0;
-            height: 4px;
-            background: linear-gradient(90deg, #667eea, #764ba2);
-            width: 0%;
-            transition: width 0.3s;
-            z-index: 10001;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 9999;
-            justify-content: center;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 40px;
+            height: 80px;
+            background: #e94560;
+            border-radius: 20px 0 0 20px;
+            display: flex;
             align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 99;
+            transition: right 0.3s;
         }
 
-        .modal-content {
-            background: white;
-            padding: 30px;
-            border-radius: 15px;
-            max-width: 500px;
-            width: 90%;
-            text-align: center;
+        .toggle-panel.open {
+            right: 350px;
         }
 
-        .hidden { display: none !important; }
+        .stats {
+            display: flex;
+            gap: 20px;
+            font-size: 13px;
+            color: #888;
+        }
 
-        @media (max-width: 1200px) {
-            .container {
-                grid-template-columns: 1fr;
-                height: auto;
-            }
-            .panel { margin-bottom: 20px; }
+        .stats span {
+            color: #e94560;
+            font-weight: 600;
         }
     </style>
 </head>
 <body>
-    <div class="progress-bar" id="progressBar"></div>
-    
-    <div class="header">
-        <h1>🩺 Éditeur PDF Médical</h1>
-        <p>Modifiez vos certificats d'arrêt de travail en toute sécurité</p>
+    <div class="upload-overlay" id="uploadOverlay">
+        <div class="upload-box" id="uploadBox">
+            <div style="font-size: 4rem; margin-bottom: 20px;">📄</div>
+            <h2>Déposez votre PDF ici</h2>
+            <p style="color: #888; margin-top: 10px;">ou cliquez pour sélectionner</p>
+            <input type="file" id="fileInput" accept=".pdf" style="display: none;">
+        </div>
     </div>
 
-    <div class="container">
-        <!-- Panel Gauche : Upload et Outils -->
-        <div class="panel">
-            <div class="panel-header">
-                <span>📁</span> Fichier
-            </div>
-            <div class="panel-content">
-                <div class="upload-area" id="uploadArea">
-                    <div style="font-size: 3rem; margin-bottom: 10px;">📄</div>
-                    <p>Glissez un PDF ici</p>
-                    <small>ou cliquez pour sélectionner</small>
-                    <input type="file" id="fileInput" accept=".pdf" style="display: none;">
-                </div>
+    <header class="header">
+        <h1>
+            <span>✏️</span>
+            PDF Editor Direct
+        </h1>
+        <div class="header-actions">
+            <button class="btn btn-secondary" onclick="document.getElementById('fileInput').click()">
+                📂 Ouvrir
+            </button>
+            <button class="btn btn-primary" onclick="exportPDF()">
+                💾 Exporter PDF
+            </button>
+        </div>
+    </header>
 
-                <div id="fileInfo" style="display: none; margin-bottom: 20px; padding: 15px; background: #e8f5e9; border-radius: 8px;">
-                    <strong>✓ Fichier chargé</strong>
-                    <p id="fileName" style="font-size: 12px; color: #666; margin-top: 5px;"></p>
-                </div>
-
-                <div class="panel-header" style="margin: 0 -20px 15px -20px;">
-                    <span>🛠️</span> Outils
-                </div>
-
-                <div class="tools-grid">
-                    <div class="tool-btn active" onclick="setTool('select')" id="tool-select">
-                        <div style="font-size: 1.5rem;">👆</div>
-                        <small>Sélection</small>
-                    </div>
-                    <div class="tool-btn" onclick="setTool('text')" id="tool-text">
-                        <div style="font-size: 1.5rem;">📝</div>
-                        <small>Ajouter texte</small>
-                    </div>
-                    <div class="tool-btn" onclick="setTool('highlight')" id="tool-highlight">
-                        <div style="font-size: 1.5rem;">🖍️</div>
-                        <small>Surligner</small>
-                    </div>
-                    <div class="tool-btn" onclick="setTool('erase')" id="tool-erase">
-                        <div style="font-size: 1.5rem;">🧹</div>
-                        <small>Gommer</small>
-                    </div>
-                </div>
-
-                <button class="btn btn-secondary" onclick="resetAll()" style="margin-top: 20px;">
-                    🔄 Réinitialiser
-                </button>
-            </div>
+    <div class="main-container">
+        <div class="toolbar">
+            <button class="tool-btn active" data-tooltip="Sélectionner" onclick="setTool('select')">👆</button>
+            <button class="tool-btn" data-tooltip="Ajouter texte" onclick="setTool('add')">📝</button>
+            <button class="tool-btn" data-tooltip="Dessiner" onclick="setTool('draw')">✏️</button>
+            <button class="tool-btn" data-tooltip="Gomme" onclick="setTool('erase')">🧹</button>
+            <button class="tool-btn" data-tooltip="Réinitialiser" onclick="resetModifications()">🔄</button>
         </div>
 
-        <!-- Panel Centre : Visualisation PDF -->
-        <div class="panel" style="flex: 2;">
-            <div class="panel-header" style="justify-content: space-between;">
-                <span><span>👁️</span> Aperçu du Document</span>
-                <span id="pageIndicator" style="font-size: 12px; opacity: 0.8;">Page 1/1</span>
+        <div class="workspace">
+            <div class="pdf-container" id="pdfContainer">
+                <div style="color: #666; text-align: center;">
+                    <p>Importez un PDF pour commencer</p>
+                </div>
             </div>
-            <div class="pdf-viewer" id="pdfViewer">
-                <div style="text-align: center; color: #999; padding: 50px;">
-                    <div style="font-size: 4rem; margin-bottom: 20px;">📭</div>
-                    <p>Aucun document chargé</p>
-                    <p style="font-size: 12px; margin-top: 10px;">Importez un PDF pour commencer l'édition</p>
+            
+            <div class="bottom-bar">
+                <div class="zoom-controls">
+                    <button class="zoom-btn" onclick="zoom(-0.1)">−</button>
+                    <span id="zoomLevel">100%</span>
+                    <button class="zoom-btn" onclick="zoom(0.1)">+</button>
+                </div>
+                <div class="stats">
+                    <div>Modifications: <span id="modCount">0</span></div>
+                    <div>Page: <span id="pageInfo">0/0</span></div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- Panel Droite : Champs éditables -->
-        <div class="panel">
-            <div class="panel-header">
-                <span>✏️</span> Champs Modifiables
-            </div>
-            <div class="panel-content">
-                <div id="fieldsList">
-                    <p style="color: #999; text-align: center; padding: 20px;">
-                        Les champs textuels détectés apparaîtront ici
-                    </p>
-                </div>
+    <div class="toggle-panel" id="togglePanel" onclick="toggleInfoPanel()">
+        <span>◀</span>
+    </div>
 
-                <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid #eee;">
-                    <button class="btn btn-success" onclick="downloadModifiedPDF()">
-                        💾 Télécharger le PDF
-                    </button>
-                    <button class="btn btn-primary" onclick="downloadAsImage()">
-                        🖼️ Télécharger en Image
-                    </button>
-                </div>
-
-                <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 8px; font-size: 12px; color: #856404;">
-                    <strong>⚠️ Note légale :</strong><br>
-                    Cet outil est fourni à titre éducatif. La falsification de documents médicaux est illégale et punie par la loi.
-                </div>
-            </div>
+    <div class="info-panel" id="infoPanel">
+        <h3>📋 Modifications</h3>
+        <div id="modificationsList">
+            <p style="color: #666; text-align: center; margin-top: 50px;">
+                Aucune modification
+            </p>
         </div>
     </div>
 
     <div class="notification" id="notification"></div>
-
-    <div class="modal" id="confirmModal">
-        <div class="modal-content">
-            <h3>⚠️ Attention</h3>
-            <p style="margin: 20px 0;">Vous êtes sur le point de modifier un document officiel. Cet outil est destiné uniquement à des fins éducatives ou pour corriger des erreurs de saisie.</p>
-            <div style="display: flex; gap: 10px; justify-content: center;">
-                <button class="btn btn-secondary" onclick="closeModal()" style="width: auto;">Annuler</button>
-                <button class="btn btn-primary" onclick="confirmEdit()" style="width: auto;">J'ai compris</button>
-            </div>
-        </div>
-    </div>
 
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
         
         let currentPDF = null;
         let pdfDocument = null;
+        let currentScale = 1.5;
+        let modifications = new Map();
         let currentTool = 'select';
-        let editableFields = [];
-        let scale = 1.5;
 
         // Upload handlers
-        const uploadArea = document.getElementById('uploadArea');
+        const uploadBox = document.getElementById('uploadBox');
         const fileInput = document.getElementById('fileInput');
 
-        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadBox.addEventListener('click', () => fileInput.click());
         
-        uploadArea.addEventListener('dragover', (e) => {
+        uploadBox.addEventListener('dragover', (e) => {
             e.preventDefault();
-            uploadArea.classList.add('dragover');
+            uploadBox.classList.add('dragover');
         });
 
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('dragover');
+        uploadBox.addEventListener('dragleave', () => {
+            uploadBox.classList.remove('dragover');
         });
 
-        uploadArea.addEventListener('drop', (e) => {
+        uploadBox.addEventListener('drop', (e) => {
             e.preventDefault();
-            uploadArea.classList.remove('dragover');
+            uploadBox.classList.remove('dragover');
             const file = e.dataTransfer.files[0];
             if (file && file.type === 'application/pdf') {
                 loadPDF(file);
@@ -478,41 +479,38 @@
         });
 
         async function loadPDF(file) {
-            showProgress(30);
+            showNotification('Chargement du PDF...', 'info');
             const arrayBuffer = await file.arrayBuffer();
             currentPDF = arrayBuffer;
             
             try {
                 pdfDocument = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-                await renderPDF();
-                
-                document.getElementById('fileName').textContent = file.name;
-                document.getElementById('fileInfo').style.display = 'block';
-                showProgress(100);
-                setTimeout(() => showProgress(0), 500);
-                
-                showNotification('PDF chargé avec succès !', 'success');
+                document.getElementById('uploadOverlay').classList.add('hidden');
+                await renderAllPages();
+                showNotification('PDF chargé ! Cliquez sur le texte pour modifier', 'success');
             } catch (error) {
-                showProgress(0);
-                showNotification('Erreur lors du chargement du PDF', 'error');
+                showNotification('Erreur de chargement', 'error');
                 console.error(error);
             }
         }
 
-        async function renderPDF() {
-            const viewer = document.getElementById('pdfViewer');
-            viewer.innerHTML = '';
-            editableFields = [];
+        async function renderAllPages() {
+            const container = document.getElementById('pdfContainer');
+            container.innerHTML = '';
+            modifications.clear();
+            updateModificationsList();
 
             for (let i = 1; i <= pdfDocument.numPages; i++) {
                 const page = await pdfDocument.getPage(i);
-                const viewport = page.getViewport({ scale });
+                const viewport = page.getViewport({ scale: currentScale });
                 
-                const container = document.createElement('div');
-                container.className = 'pdf-page-container';
-                container.style.width = viewport.width + 'px';
-                container.style.height = viewport.height + 'px';
+                const pageDiv = document.createElement('div');
+                pageDiv.className = 'pdf-page';
+                pageDiv.style.width = viewport.width + 'px';
+                pageDiv.style.height = viewport.height + 'px';
+                pageDiv.dataset.pageNum = i;
                 
+                // Canvas pour le rendu PDF
                 const canvas = document.createElement('canvas');
                 canvas.className = 'pdf-canvas';
                 canvas.width = viewport.width;
@@ -521,130 +519,186 @@
                 const ctx = canvas.getContext('2d');
                 await page.render({ canvasContext: ctx, viewport }).promise;
                 
+                // Couche de texte éditable
                 const textLayer = document.createElement('div');
-                textLayer.className = 'text-overlay';
+                textLayer.className = 'text-layer';
                 
-                // Extraction et création des champs éditables
                 const textContent = await page.getTextContent();
+                
                 textContent.items.forEach((item, idx) => {
-                    if (item.str.trim().length > 0) {
-                        const field = createEditableField(item, viewport, i, idx);
-                        textLayer.appendChild(field);
-                        editableFields.push({
-                            element: field,
-                            page: i,
-                            originalText: item.str,
-                            item: item
-                        });
-                    }
+                    const textDiv = createEditableText(item, viewport, i, idx);
+                    textLayer.appendChild(textDiv);
                 });
                 
-                container.appendChild(canvas);
-                container.appendChild(textLayer);
-                viewer.appendChild(container);
+                pageDiv.appendChild(canvas);
+                pageDiv.appendChild(textLayer);
+                container.appendChild(pageDiv);
             }
             
-            updateFieldsList();
-            document.getElementById('pageIndicator').textContent = `Page 1/${pdfDocument.numPages}`;
+            document.getElementById('pageInfo').textContent = `1/${pdfDocument.numPages}`;
         }
 
-        function createEditableField(item, viewport, pageNum, idx) {
-            const tx = item.transform;
+        function createEditableText(item, viewport, pageNum, idx) {
             const div = document.createElement('div');
-            div.className = 'editable-field';
-            div.contentEditable = true;
+            div.className = 'pdf-text';
             div.textContent = item.str;
+            div.dataset.original = item.str;
             div.dataset.page = pageNum;
             div.dataset.index = idx;
             
-            // Calcul de la position
-            const x = tx[4];
-            const y = viewport.height - tx[5] - (item.height || 12);
+            // Calcul précis de la position et taille
+            const tx = item.transform;
+            const fontSize = Math.sqrt(tx[0] * tx[0] + tx[1] * tx[1]);
             
-            div.style.left = x + 'px';
-            div.style.top = y + 'px';
-            div.style.fontSize = (item.height || 12) + 'px';
-            div.style.minWidth = item.width + 'px';
+            // Positionnement exact
+            div.style.left = tx[4] + 'px';
+            div.style.top = (viewport.height - tx[5] - fontSize) + 'px';
+            div.style.fontSize = fontSize + 'px';
+            div.style.fontFamily = item.fontName || 'Arial';
+            div.style.transform = `scaleX(${tx[0] / fontSize})`;
             
-            // Événements
-            div.addEventListener('input', updateFieldsList);
-            div.addEventListener('focus', () => highlightField(div));
+            // Largeur approximative basée sur le texte
+            div.style.minWidth = (item.width || fontSize * item.str.length * 0.6) + 'px';
+            div.style.height = fontSize + 'px';
+            
+            // Gestion de l'édition
+            div.addEventListener('focus', function() {
+                this.style.color = '#000';
+                selectText(this);
+            });
+            
+            div.addEventListener('blur', function() {
+                if (this.textContent !== this.dataset.original) {
+                    this.classList.add('modified');
+                    saveModification(this);
+                } else {
+                    this.classList.remove('modified');
+                    this.style.color = 'transparent';
+                }
+            });
+            
+            div.addEventListener('input', function() {
+                this.classList.add('modified');
+                this.style.color = '#000';
+            });
+            
+            // Double-clic pour sélectionner tout
+            div.addEventListener('dblclick', function(e) {
+                e.stopPropagation();
+                const range = document.createRange();
+                range.selectNodeContents(this);
+                const sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(range);
+            });
             
             return div;
         }
 
-        function updateFieldsList() {
-            const list = document.getElementById('fieldsList');
+        function selectText(element) {
+            // Désélectionner les autres
+            document.querySelectorAll('.pdf-text').forEach(el => {
+                if (el !== element) el.style.color = 'transparent';
+            });
+        }
+
+        function saveModification(element) {
+            const key = `${element.dataset.page}-${element.dataset.index}`;
+            const mod = {
+                page: element.dataset.page,
+                index: element.dataset.index,
+                original: element.dataset.original,
+                new: element.textContent,
+                element: element
+            };
+            
+            if (element.textContent === element.dataset.original) {
+                modifications.delete(key);
+            } else {
+                modifications.set(key, mod);
+            }
+            
+            updateModificationsList();
+            document.getElementById('modCount').textContent = modifications.size;
+        }
+
+        function updateModificationsList() {
+            const list = document.getElementById('modificationsList');
+            
+            if (modifications.size === 0) {
+                list.innerHTML = '<p style="color: #666; text-align: center; margin-top: 50px;">Aucune modification</p>';
+                return;
+            }
+            
             list.innerHTML = '';
-            
-            const grouped = {};
-            editableFields.forEach(field => {
-                if (!grouped[field.page]) grouped[field.page] = [];
-                grouped[field.page].push(field);
-            });
-            
-            Object.keys(grouped).forEach(page => {
-                const pageHeader = document.createElement('div');
-                pageHeader.style.cssText = 'background: #667eea; color: white; padding: 5px 10px; border-radius: 5px; margin: 10px 0; font-size: 12px;';
-                pageHeader.textContent = `Page ${page}`;
-                list.appendChild(pageHeader);
-                
-                grouped[page].forEach((field, idx) => {
-                    const item = document.createElement('div');
-                    item.className = 'field-item';
-                    item.innerHTML = `
-                        <label>Champ ${idx + 1}</label>
-                        <input type="text" value="${field.element.textContent}" 
-                               oninput="updateFieldFromList(${editableFields.indexOf(field)}, this.value)"
-                               onclick="focusField(${editableFields.indexOf(field)})">
-                    `;
-                    list.appendChild(item);
-                });
+            modifications.forEach((mod, key) => {
+                const item = document.createElement('div');
+                item.className = 'modification-item';
+                item.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                        <small style="color: #888;">Page ${mod.page}</small>
+                        <button onclick="restoreOriginal('${key}')" style="background: none; border: none; color: #e94560; cursor: pointer; font-size: 12px;">↩️</button>
+                    </div>
+                    <div class="original">${mod.original}</div>
+                    <div class="new">${mod.new}</div>
+                `;
+                item.onclick = () => {
+                    mod.element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    mod.element.focus();
+                };
+                list.appendChild(item);
             });
         }
 
-        function updateFieldFromList(index, value) {
-            editableFields[index].element.textContent = value;
+        function restoreOriginal(key) {
+            const mod = modifications.get(key);
+            if (mod) {
+                mod.element.textContent = mod.original;
+                mod.element.classList.remove('modified');
+                mod.element.style.color = 'transparent';
+                mod.element.blur();
+                modifications.delete(key);
+                updateModificationsList();
+                document.getElementById('modCount').textContent = modifications.size;
+            }
         }
 
-        function focusField(index) {
-            editableFields[index].element.focus();
-            editableFields[index].element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-
-        function highlightField(element) {
-            editableFields.forEach(f => f.element.style.background = 'rgba(255, 235, 59, 0.3)');
-            element.style.background = 'rgba(102, 126, 234, 0.3)';
-        }
-
-        function setTool(tool) {
-            currentTool = tool;
-            document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
-            document.getElementById(`tool-${tool}`).classList.add('active');
+        function resetModifications() {
+            if (modifications.size === 0) return;
+            if (!confirm('Réinitialiser toutes les modifications ?')) return;
             
-            const viewer = document.getElementById('pdfViewer');
-            viewer.style.cursor = tool === 'text' ? 'crosshair' : 'default';
+            modifications.forEach((mod) => {
+                mod.element.textContent = mod.original;
+                mod.element.classList.remove('modified');
+                mod.element.style.color = 'transparent';
+            });
+            modifications.clear();
+            updateModificationsList();
+            document.getElementById('modCount').textContent = 0;
+            showNotification('Modifications réinitialisées', 'success');
         }
 
-        async function downloadModifiedPDF() {
+        async function exportPDF() {
             if (!currentPDF) {
-                showNotification('Aucun PDF à télécharger', 'error');
+                showNotification('Aucun PDF à exporter', 'error');
                 return;
             }
 
-            showNotification('Génération du PDF en cours...', 'info');
+            showNotification('Génération du PDF...', 'info');
             
             try {
-                // Créer une nouvelle version avec html2canvas pour capturer les modifications visuelles
-                const pages = document.querySelectorAll('.pdf-page-container');
+                const pages = document.querySelectorAll('.pdf-page');
                 const { PDFDocument } = PDFLib;
                 const newPdf = await PDFDocument.create();
                 
-                for (let container of pages) {
-                    const canvas = await html2canvas(container, {
+                for (let pageDiv of pages) {
+                    // Capture haute qualité
+                    const canvas = await html2canvas(pageDiv, {
                         scale: 2,
                         useCORS: true,
-                        allowTaint: true
+                        allowTaint: true,
+                        backgroundColor: '#ffffff',
+                        logging: false
                     });
                     
                     const imgData = canvas.toDataURL('image/jpeg', 0.95);
@@ -667,59 +721,62 @@
                 const a = document.createElement('a');
                 a.href = url;
                 a.download = 'document_modifie.pdf';
+                document.body.appendChild(a);
                 a.click();
+                document.body.removeChild(a);
                 URL.revokeObjectURL(url);
                 
-                showNotification('PDF téléchargé avec succès !', 'success');
+                showNotification('PDF exporté avec succès !', 'success');
             } catch (error) {
                 console.error(error);
-                showNotification('Erreur lors de la génération', 'error');
+                showNotification('Erreur lors de l\'export', 'error');
             }
         }
 
-        async function downloadAsImage() {
-            if (!currentPDF) return;
-            
-            const container = document.querySelector('.pdf-page-container');
-            const canvas = await html2canvas(container, { scale: 2 });
-            const link = document.createElement('a');
-            link.download = 'document_modifie.png';
-            link.href = canvas.toDataURL();
-            link.click();
-            
-            showNotification('Image téléchargée !', 'success');
+        function setTool(tool) {
+            currentTool = tool;
+            document.querySelectorAll('.tool-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.getAttribute('onclick').includes(tool)) {
+                    btn.classList.add('active');
+                }
+            });
         }
 
-        function resetAll() {
-            if (confirm('Réinitialiser toutes les modifications ?')) {
-                location.reload();
-            }
+        function zoom(delta) {
+            currentScale = Math.max(0.5, Math.min(3, currentScale + delta));
+            document.getElementById('zoomLevel').textContent = Math.round(currentScale * 100) + '%';
+            if (pdfDocument) renderAllPages();
         }
 
-        function showProgress(percent) {
-            document.getElementById('progressBar').style.width = percent + '%';
+        function toggleInfoPanel() {
+            const panel = document.getElementById('infoPanel');
+            const toggle = document.getElementById('togglePanel');
+            panel.classList.toggle('open');
+            toggle.classList.toggle('open');
+            toggle.innerHTML = panel.classList.contains('open') ? '▶' : '◀';
         }
 
         function showNotification(message, type) {
             const notif = document.getElementById('notification');
             notif.textContent = message;
-            notif.className = `notification ${type} show`;
+            notif.style.borderLeftColor = type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : '#17a2b8';
+            notif.classList.add('show');
             setTimeout(() => notif.classList.remove('show'), 3000);
         }
 
-        function closeModal() {
-            document.getElementById('confirmModal').style.display = 'none';
-        }
-
-        function confirmEdit() {
-            closeModal();
-            // Continuer avec l'édition
-        }
-
-        // Avertissement initial
-        window.onload = () => {
-            document.getElementById('confirmModal').style.display = 'flex';
-        };
+        // Raccourcis clavier
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                if (e.key === 's') {
+                    e.preventDefault();
+                    exportPDF();
+                } else if (e.key === 'o') {
+                    e.preventDefault();
+                    document.getElementById('fileInput').click();
+                }
+            }
+        });
     </script>
 </body>
 </html>
