@@ -3,892 +3,492 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Medical Date Editor - Universal Detector</title>
+    <title>PDF Medical Editor - Version Correction Finale</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        
         body { font-family: 'Inter', sans-serif; background: #f1f5f9; }
-        
-        .pdf-container { background: #525659; }
+        .pdf-container { background: #525659; overflow: auto; }
         .pdf-page { 
             background: white; 
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5); 
             position: relative; 
             margin: 20px auto; 
-            overflow: hidden; 
         }
         
-        /* Date détectée - modifiable */
         .date-overlay {
             position: absolute;
             border: 3px solid #3b82f6;
-            background: rgba(59, 130, 246, 0.15);
+            background: rgba(59, 130, 246, 0.2);
             cursor: pointer;
-            transition: all 0.3s ease;
             z-index: 10;
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: all 0.2s;
         }
         
-        .date-overlay:hover {
-            background: rgba(59, 130, 246, 0.35);
-            border-color: #2563eb;
-            transform: scale(1.02);
-            box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+        .date-overlay:hover { transform: scale(1.02); background: rgba(59, 130, 246, 0.3); }
+        .date-overlay.selected { 
+            background: rgba(245, 158, 11, 0.3); 
+            border-color: #f59e0b; 
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.3);
         }
-        
-        .date-overlay.selected {
-            background: rgba(245, 158, 11, 0.3);
-            border-color: #f59e0b;
-            box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.4);
-            z-index: 20;
-            animation: pulse 2s infinite;
-        }
-        
-        .date-overlay.modified {
-            background: rgba(34, 197, 94, 0.25);
-            border-color: #22c55e;
-        }
-        
+        .date-overlay.modified { background: rgba(34, 197, 94, 0.3); border-color: #22c55e; }
         .date-overlay.modified::after {
-            content: '✓ MODIFIÉ';
+            content: 'MODIFIÉ';
             position: absolute;
-            top: -28px;
+            top: -20px;
             right: 0;
             background: #22c55e;
             color: white;
-            padding: 3px 8px;
-            border-radius: 4px;
+            padding: 2px 6px;
+            border-radius: 3px;
             font-size: 10px;
             font-weight: bold;
-            white-space: nowrap;
         }
         
-        /* Date protégée (naissance, etc) - cadenas */
         .date-protected {
             position: absolute;
             border: 2px dashed #ef4444;
             background: rgba(239, 68, 68, 0.1);
-            cursor: not-allowed;
-            z-index: 5;
             display: flex;
             align-items: center;
             justify-content: center;
+            cursor: not-allowed;
         }
         
-        .date-protected::after {
-            content: '🔒';
-            font-size: 16px;
-            opacity: 0.7;
-        }
-        
-        .date-protected:hover::before {
-            content: 'Date protégée (naissance/ID)';
-            position: absolute;
-            top: -30px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #ef4444;
-            color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            white-space: nowrap;
-            z-index: 100;
-        }
-        
-        /* Badge Doctolib */
-        .doctolib-badge {
-            position: absolute;
-            background: #059669;
-            color: white;
-            font-size: 9px;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-weight: bold;
-            top: -18px;
-            left: 0;
-            white-space: nowrap;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.4); }
-            50% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0.2); }
-        }
-        
-        .loading-spinner {
-            border: 3px solid #f3f4f6;
-            border-top: 3px solid #3b82f6;
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            animation: spin 1s linear infinite;
-        }
-        
+        .loading { border: 3px solid #f3f4f6; border-top: 3px solid #3b82f6; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
-        .scan-line {
-            position: absolute;
-            width: 100%;
-            height: 3px;
-            background: linear-gradient(to right, transparent, #3b82f6, transparent);
-            animation: scan 2s linear infinite;
-            z-index: 100;
-        }
-        
-        @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
     </style>
 </head>
-<body class="min-h-screen flex flex-col">
+<body class="h-screen flex flex-col">
 
-    <!-- Header -->
-    <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
-        <div class="max-w-full mx-auto px-4 h-14 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                    </svg>
-                </div>
-                <div>
-                    <h1 class="text-lg font-bold text-slate-900">PDF Medical Editor</h1>
-                    <p class="text-xs text-slate-500">Détection universelle des dates</p>
-                </div>
-            </div>
-            
-            <div class="flex items-center gap-2">
-                <input type="file" id="pdf-input" accept=".pdf" class="hidden" onchange="handlePDFUpload(event)">
-                <label for="pdf-input" class="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded text-sm font-medium border border-slate-300">
-                    Nouveau PDF
-                </label>
-                <button onclick="downloadModifiedPDF()" id="download-btn" disabled class="hidden bg-green-600 text-white px-4 py-1.5 rounded text-sm font-medium opacity-50 cursor-not-allowed">
-                    Télécharger
-                </button>
-            </div>
+    <header class="bg-white border-b h-14 flex items-center justify-between px-4 shadow-sm z-50">
+        <div class="flex items-center gap-2">
+            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">M</div>
+            <h1 class="font-bold text-slate-800">PDF Medical Editor</h1>
+        </div>
+        <div class="flex gap-2">
+            <input type="file" id="pdf-input" accept=".pdf" class="hidden" onchange="loadPDF(event)">
+            <label for="pdf-input" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded text-sm cursor-pointer border">Nouveau</label>
+            <button onclick="downloadPDF()" id="dl-btn" disabled class="px-3 py-1.5 bg-green-600 text-white rounded text-sm opacity-50 cursor-not-allowed">Télécharger</button>
         </div>
     </header>
 
     <div class="flex-1 flex overflow-hidden">
-        
-        <!-- Sidebar -->
-        <aside class="w-80 bg-white border-r border-slate-200 flex flex-col overflow-y-auto">
-            
-            <div id="upload-section" class="p-6 flex-1 flex flex-col justify-center items-center text-center">
-                <div class="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4">
-                    <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-                    </svg>
-                </div>
-                <h3 class="font-semibold text-slate-900 mb-2">Document médical PDF</h3>
-                <p class="text-xs text-slate-500 mb-4">Détecte: JJ/MM/AAAA, JJ-MM-AAAA, 1 janvier 2024, Signé via Doctolib...</p>
-                <label for="pdf-input" class="bg-blue-600 text-white px-6 py-2 rounded-lg cursor-pointer hover:bg-blue-700 transition-colors text-sm font-medium shadow-md">
-                    Charger PDF
-                </label>
+        <aside class="w-72 bg-white border-r flex flex-col">
+            <div id="upload-panel" class="flex-1 flex flex-col justify-center items-center p-4 text-center">
+                <p class="text-sm text-slate-500 mb-4">Chargez un PDF médical pour détecter et modifier les dates</p>
+                <label for="pdf-input" class="bg-blue-600 text-white px-4 py-2 rounded-lg cursor-pointer hover:bg-blue-700">Sélectionner PDF</label>
             </div>
-
-            <div id="editor-controls" class="hidden flex-1 flex flex-col">
-                
-                <div class="p-3 bg-blue-50 border-b border-blue-100">
+            
+            <div id="editor-panel" class="hidden flex-1 flex flex-col">
+                <div class="p-3 bg-blue-50 border-b">
                     <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                            <div id="scan-indicator" class="hidden loading-spinner w-4 h-4 border-2"></div>
-                            <span id="detection-status" class="text-sm font-medium text-slate-700">Analyse...</span>
-                        </div>
-                        <span id="dates-count" class="bg-blue-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">0</span>
+                        <span id="status" class="text-sm font-medium">Analyse...</span>
+                        <span id="count" class="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">0</span>
                     </div>
                 </div>
-
-                <div class="px-3 py-2 bg-amber-50 border-b border-amber-200">
-                    <p class="text-xs text-amber-800">
-                        🔵 = Modifiable | 🔒 = Protégé | 🟢 = Doctolib
-                    </p>
-                </div>
-
-                <div class="flex-1 overflow-y-auto p-3">
-                    <div id="dates-list" class="space-y-2"></div>
-                </div>
-
-                <div id="modification-panel" class="p-3 bg-slate-50 border-t border-slate-200 hidden">
-                    <h4 class="font-semibold text-sm mb-2 flex items-center gap-2">
-                        <span id="edit-icon">✏️</span>
-                        <span id="edit-title">Modifier</span>
-                    </h4>
-                    <div class="bg-white p-2 rounded border mb-2">
-                        <div class="text-xs text-slate-500">Originale:</div>
-                        <div id="current-date-display" class="font-mono text-sm font-bold text-slate-800"></div>
-                    </div>
-                    <input type="date" id="new-date-input" class="w-full px-2 py-1.5 border rounded text-sm mb-2">
+                
+                <div class="flex-1 overflow-y-auto p-2" id="dates-list"></div>
+                
+                <div id="edit-box" class="hidden p-3 bg-slate-50 border-t">
+                    <div class="text-xs text-slate-500 mb-1">Date originale:</div>
+                    <div id="orig-date" class="font-mono font-bold text-sm mb-2 text-slate-800"></div>
+                    <input type="date" id="new-date" class="w-full border rounded px-2 py-1 text-sm mb-2">
                     <div class="flex gap-2">
-                        <button onclick="applyDateChange()" class="flex-1 bg-blue-600 text-white py-1.5 rounded text-sm font-medium hover:bg-blue-700">
-                            Appliquer
-                        </button>
-                        <button onclick="setToday()" class="px-3 bg-slate-200 text-slate-700 rounded text-sm hover:bg-slate-300">
-                            Aujourd'hui
-                        </button>
+                        <button onclick="apply()" class="flex-1 bg-blue-600 text-white py-1 rounded text-sm">Appliquer</button>
+                        <button onclick="today()" class="px-2 bg-slate-200 rounded text-sm">Auj</button>
                     </div>
-                    <button onclick="cancelSelection()" class="w-full text-slate-500 hover:text-slate-700 text-xs py-2 mt-1">
-                        Annuler
-                    </button>
                 </div>
             </div>
         </aside>
 
-        <!-- Viewer -->
-        <main class="flex-1 pdf-container overflow-auto relative" id="main-viewer">
-            <div id="scanning-overlay" class="hidden absolute inset-0 pointer-events-none z-50">
-                <div class="scan-line"></div>
+        <main class="flex-1 pdf-container relative" id="viewer">
+            <div id="empty" class="absolute inset-0 flex items-center justify-center text-slate-400">
+                <p>Aucun document</p>
             </div>
-
-            <div id="empty-state" class="h-full flex items-center justify-center text-slate-400">
-                <div class="text-center">
-                    <svg class="w-16 h-16 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                    </svg>
-                    <p>Importez un PDF</p>
-                </div>
-            </div>
-
-            <div id="pdf-viewer" class="hidden min-h-full p-8 pb-20">
-                <div id="pdf-pages" class="space-y-8"></div>
-            </div>
+            <div id="pages" class="hidden p-8 space-y-8"></div>
         </main>
     </div>
 
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
         
-        let currentPDF = null;
-        let currentPDFBytes = null;
-        let pdfDocument = null;
-        let detectedDates = [];
-        let selectedDateId = null;
+        let pdfDoc = null;
+        let pdfBytes = null;
+        let dates = [];
+        let selected = null;
         let scale = 1.5;
 
-        // === CONFIGURATION COMPLÈTE DES PATTERNS ===
+        const months = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
         
-        // Tous les mois en français avec variantes
-        const monthsFR = {
-            'janvier': 1, 'février': 2, 'fevrier': 2, 'mars': 3, 'avril': 4,
-            'mai': 5, 'juin': 6, 'juillet': 7, 'août': 8, 'aout': 8,
-            'septembre': 9, 'octobre': 10, 'novembre': 11, 'décembre': 12, 'decembre': 12
-        };
-        
-        const monthsPattern = Object.keys(monthsFR).join('|');
-        
-        // Patterns de détection exhaustifs
-        const datePatterns = [
-            // Format: 28/01/2026 ou 28/1/2026
-            { 
-                regex: /\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/g, 
-                type: 'slash',
-                format: (d, m, y) => `${d.padStart(2,'0')}/${m.padStart(2,'0')}/${y}`
-            },
-            // Format: 28-01-2026 ou 28-01-26
-            { 
-                regex: /\b(\d{1,2})-(\d{1,2})-(\d{2,4})\b/g, 
-                type: 'dash',
-                format: (d, m, y) => `${d.padStart(2,'0')}-${m.padStart(2,'0')}-${y.length === 2 ? '20'+y : y}`
-            },
-            // Format: 28.01.2026
-            { 
-                regex: /\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b/g, 
-                type: 'dot',
-                format: (d, m, y) => `${d.padStart(2,'0')}.${m.padStart(2,'0')}.${y}`
-            },
-            // Format texte: 28 janvier 2026 ou 1er janvier 2026 ou 28 janv 2026
-            { 
-                regex: new RegExp(`\\b(\\d{1,2})(?:er|ère|eme|ème)?\\s+(${monthsPattern})\\s+(\\d{4})\\b`, 'gi'),
-                type: 'text',
-                format: (d, mText, y) => {
-                    const m = monthsFR[mText.toLowerCase()] || monthsFR[mText.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')];
-                    return `${d} ${mText} ${y}`;
-                }
-            },
-            // Format: janvier 2026 (sans jour)
-            { 
-                regex: new RegExp(`\\b(${monthsPattern})\\s+(\\d{4})\\b`, 'gi'),
-                type: 'month-year',
-                format: (mText, y) => `${mText} ${y}`
-            }
+        const patterns = [
+            { re: /\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/g, type: 'slash' },
+            { re: /\b(\d{1,2})-(\d{1,2})-(\d{4})\b/g, type: 'dash' },
+            { re: /\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b/g, type: 'dot' },
+            { re: /\b(\d{1,2})\s+(janvier|février|fevrier|mars|avril|mai|juin|juillet|août|aout|septembre|octobre|novembre|décembre)\s+(\d{4})\b/gi, type: 'text' }
         ];
 
-        // Pattern spécifique Doctolib
-        const doctolibPattern = /(signé\s+via\s+doctolib.*?)(\d{1,2})[\/\s\-](\d{1,2}|[a-zéû]+)[\/\s\-](\d{4})/i;
+        const medical = ['arrêt','travail','jusqu','prescrit','consultation','certificat','médical','pathologique','sorties','doctolib','signé'];
+        const protect = ['né','née','naissance','immatriculation','sécurité sociale'];
 
-        // Mots-clés contextuels
-        const medicalKeywords = [
-            'arrêt', 'travail', 'jusqu\'au', 'du', 'au', 'prescrit', 'prescription',
-            'consultation', 'certificat', 'médical', 'pathologique', 'grossesse',
-            'accident', 'maladie', 'professionnelle', 'sorties', 'autorisées',
-            'reprise', 'contrôle', 'prolongation', 'examen', 'doctolib', 'signé',
-            'visa', 'contre-visite', 'début', 'fin', 'durée', 'jours', 'date'
-        ];
-
-        const protectedKeywords = [
-            'né', 'née', 'naissance', 'date de naissance', 'né(e)', 'lieu de naissance',
-            'immatriculation', 'sécurité sociale', 'n° ss', 'numéro ss', 'identifiant',
-            'patient', 'né le', 'née le', 'date naissance', 'born', 'birth'
-        ];
-
-        const doctolibKeywords = ['doctolib', 'signé via', 'signature électronique'];
-
-        // === FONCTIONS PRINCIPALES ===
-
-        async function handlePDFUpload(event) {
-            const file = event.target.files[0];
+        async function loadPDF(e) {
+            const file = e.target.files[0];
             if (!file) return;
             
             try {
-                detectedDates = [];
-                selectedDateId = null;
+                pdfBytes = await file.arrayBuffer();
+                pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
+                const pdfjs = await pdfjsLib.getDocument({ data: pdfBytes }).promise;
                 
-                currentPDFBytes = await file.arrayBuffer();
-                pdfDocument = await PDFLib.PDFDocument.load(currentPDFBytes);
-                currentPDF = await pdfjsLib.getDocument({ data: currentPDFBytes }).promise;
+                document.getElementById('upload-panel').classList.add('hidden');
+                document.getElementById('editor-panel').classList.remove('hidden');
+                document.getElementById('empty').classList.add('hidden');
+                document.getElementById('pages').classList.remove('hidden');
                 
-                document.getElementById('upload-section').classList.add('hidden');
-                document.getElementById('editor-controls').classList.remove('hidden');
-                document.getElementById('empty-state').classList.add('hidden');
-                document.getElementById('pdf-viewer').classList.remove('hidden');
-                document.getElementById('download-btn').classList.remove('hidden');
+                await render(pdfjs);
+                await analyze(pdfjs);
                 
-                await renderAllPages();
-                await analyzeDocument();
-                
-            } catch (error) {
-                console.error('Erreur:', error);
-                alert('Erreur chargement: ' + error.message);
+            } catch(err) {
+                alert('Erreur: ' + err.message);
+                console.error(err);
             }
         }
 
-        async function renderAllPages() {
-            const container = document.getElementById('pdf-pages');
+        async function render(pdfjs) {
+            const container = document.getElementById('pages');
             container.innerHTML = '';
             
-            for (let i = 1; i <= currentPDF.numPages; i++) {
-                await renderPage(i);
-            }
-        }
-
-        async function renderPage(pageNum) {
-            const page = await currentPDF.getPage(pageNum);
-            const viewport = page.getViewport({ scale });
-            
-            const pageDiv = document.createElement('div');
-            pageDiv.className = 'pdf-page';
-            pageDiv.style.width = viewport.width + 'px';
-            pageDiv.style.height = viewport.height + 'px';
-            
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-            
-            await page.render({
-                canvasContext: context,
-                viewport: viewport
-            }).promise;
-            
-            pageDiv.appendChild(canvas);
-            
-            const overlay = document.createElement('div');
-            overlay.className = 'absolute inset-0';
-            overlay.id = `overlay-${pageNum}`;
-            pageDiv.appendChild(overlay);
-            
-            document.getElementById('pdf-pages').appendChild(pageDiv);
-        }
-
-        async function analyzeDocument() {
-            showScanning(true);
-            document.getElementById('detection-status').textContent = 'Analyse en cours...';
-            
-            detectedDates = [];
-            let stats = { total: 0, medical: 0, protected: 0, doctolib: 0 };
-            
-            try {
-                for (let pageNum = 1; pageNum <= currentPDF.numPages; pageNum++) {
-                    const page = await currentPDF.getPage(pageNum);
-                    const textContent = await page.getTextContent();
-                    const items = textContent.items;
-                    
-                    // Regrouper par lignes pour meilleur contexte
-                    const lines = groupByLines(items);
-                    
-                    for (const line of lines) {
-                        const lineText = line.text;
-                        const lineY = line.y;
-                        
-                        // Recherche Doctolib spécifique
-                        const doctoMatch = lineText.match(doctolibPattern);
-                        if (doctoMatch) {
-                            stats.total++;
-                            stats.doctolib++;
-                            const fullMatch = doctoMatch[0];
-                            const datePart = doctoMatch[0].replace(/signé\s+via\s+doctolib\s*/i, '').trim();
-                            
-                            // Trouver position approximative
-                            const dateItem = line.items.find(item => item.str.includes(doctoMatch[2]));
-                            
-                            detectedDates.push({
-                                id: `date-${pageNum}-${detectedDates.length}`,
-                                page: pageNum,
-                                original: fullMatch,
-                                datePart: datePart,
-                                newValue: null,
-                                type: 'doctolib',
-                                isDoctolib: true,
-                                context: lineText,
-                                x: dateItem ? dateItem.transform[4] : line.items[0].transform[4],
-                                y: lineY,
-                                width: 250,
-                                height: 20,
-                                isMedical: true,
-                                isProtected: false
-                            });
-                            continue;
-                        }
-                        
-                        // Recherche dates standards
-                        for (const pattern of datePatterns) {
-                            pattern.regex.lastIndex = 0;
-                            let match;
-                            
-                            while ((match = pattern.regex.exec(lineText)) !== null) {
-                                stats.total++;
-                                const dateStr = match[0];
-                                
-                                // Contexte avant/après
-                                const beforeContext = lineText.substring(0, match.index).toLowerCase();
-                                const afterContext = lineText.substring(match.index + dateStr.length).toLowerCase();
-                                const fullContext = (beforeContext + ' ' + dateStr + ' ' + afterContext).toLowerCase();
-                                
-                                // Déterminer si protégé
-                                const isProtected = protectedKeywords.some(kw => fullContext.includes(kw));
-                                
-                                // Déterminer si médical
-                                const isMedical = medicalKeywords.some(kw => fullContext.includes(kw)) || 
-                                                 isProtected === false; // Par défaut si pas protégé
-                                
-                                if (isProtected) stats.protected++;
-                                else if (isMedical) stats.medical++;
-                                
-                                // Trouver l'item correspondant
-                                let targetItem = null;
-                                let offsetX = 0;
-                                
-                                for (const item of line.items) {
-                                    const itemText = item.str;
-                                    if (itemText.includes(dateStr)) {
-                                        targetItem = item;
-                                        const idx = itemText.indexOf(dateStr);
-                                        const charWidth = item.width / itemText.length;
-                                        offsetX = idx * charWidth;
-                                        break;
-                                    }
-                                }
-                                
-                                if (!targetItem && line.items.length > 0) {
-                                    targetItem = line.items[0];
-                                }
-                                
-                                if (targetItem) {
-                                    const charWidth = targetItem.width / targetItem.str.length;
-                                    const dateWidth = dateStr.length * charWidth;
-                                    
-                                    detectedDates.push({
-                                        id: `date-${pageNum}-${detectedDates.length}`,
-                                        page: pageNum,
-                                        original: dateStr,
-                                        newValue: null,
-                                        type: pattern.type,
-                                        context: lineText,
-                                        x: targetItem.transform[4] + offsetX,
-                                        y: lineY,
-                                        width: Math.max(dateWidth + 10, 80),
-                                        height: Math.max(targetItem.height, 14),
-                                        isMedical: isMedical,
-                                        isProtected: isProtected
-                                    });
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                console.log('Stats détection:', stats);
-                console.log('Dates trouvées:', detectedDates.length);
-                
-            } catch (error) {
-                console.error('Erreur analyse:', error);
-            }
-            
-            showScanning(false);
-            displayDateOverlays();
-            updateDateList();
-            updateStatus();
-        }
-
-        function groupByLines(items) {
-            const lines = [];
-            const tolerance = 5; // pixels de tolérance pour Y
-            
-            items.forEach(item => {
-                const y = item.transform[5];
-                let line = lines.find(l => Math.abs(l.y - y) < tolerance);
-                
-                if (!line) {
-                    line = { y: y, items: [], text: '' };
-                    lines.push(line);
-                }
-                
-                line.items.push(item);
-                line.text += item.str + ' ';
-            });
-            
-            // Trier par Y décroissant (ordre lecture PDF)
-            lines.sort((a, b) => b.y - a.y);
-            
-            // Trier items dans chaque ligne par X
-            lines.forEach(line => {
-                line.items.sort((a, b) => a.transform[4] - b.transform[4]);
-                line.text = line.items.map(i => i.str).join(' ');
-            });
-            
-            return lines;
-        }
-
-        function displayDateOverlays() {
-            // Nettoyer
-            document.querySelectorAll('.date-overlay, .date-protected').forEach(el => el.remove());
-            
-            detectedDates.forEach((date, index) => {
-                const overlay = document.getElementById(`overlay-${date.page}`);
-                if (!overlay) return;
-                
-                const pageDiv = overlay.parentElement;
-                const pageHeight = pageDiv.offsetHeight;
-                
-                const x = date.x * scale;
-                const y = pageHeight - (date.y * scale) - (date.height * scale);
+            for (let i = 1; i <= pdfjs.numPages; i++) {
+                const page = await pdfjs.getPage(i);
+                const vp = page.getViewport({ scale });
                 
                 const div = document.createElement('div');
+                div.className = 'pdf-page';
+                div.style.width = vp.width + 'px';
+                div.style.height = vp.height + 'px';
                 
-                if (date.isProtected) {
+                const canvas = document.createElement('canvas');
+                canvas.width = vp.width;
+                canvas.height = vp.height;
+                const ctx = canvas.getContext('2d');
+                
+                await page.render({ canvasContext: ctx, viewport: vp }).promise;
+                
+                div.appendChild(canvas);
+                
+                const over = document.createElement('div');
+                over.className = 'absolute inset-0';
+                over.id = `over-${i}`;
+                div.appendChild(over);
+                
+                container.appendChild(div);
+            }
+        }
+
+        async function analyze(pdfjs) {
+            document.getElementById('status').textContent = 'Analyse...';
+            dates = [];
+            
+            for (let p = 1; p <= pdfjs.numPages; p++) {
+                const page = await pdfjs.getPage(p);
+                const text = await page.getTextContent();
+                
+                // Grouper par lignes
+                const lines = {};
+                text.items.forEach(item => {
+                    const y = Math.round(item.transform[5]);
+                    if (!lines[y]) lines[y] = [];
+                    lines[y].push(item);
+                });
+                
+                // Traiter chaque ligne
+                for (const y in lines) {
+                    const items = lines[y].sort((a,b) => a.transform[4] - b.transform[4]);
+                    const lineText = items.map(i => i.str).join('');
+                    
+                    // Doctolib spécial
+                    const docto = lineText.match(/signé\s+via\s+doctolib.*?(\d{1,2}[\/\s\-]\d{1,2}[\/\s\-]\d{4})/i);
+                    if (docto) {
+                        const idx = lineText.toLowerCase().indexOf('doctolib');
+                        const item = items.find(i => i.str.toLowerCase().includes('doctolib')) || items[0];
+                        addDate({
+                            id: `d${p}-${dates.length}`,
+                            page: p,
+                            orig: docto[0],
+                            newVal: null,
+                            type: 'doctolib',
+                            x: item.transform[4],
+                            y: parseFloat(y),
+                            w: 200,
+                            h: 20,
+                            isDoctolib: true,
+                            isProtected: false
+                        }, items);
+                        continue;
+                    }
+                    
+                    // Patterns standards
+                    for (const pat of patterns) {
+                        pat.re.lastIndex = 0;
+                        let m;
+                        while ((m = pat.re.exec(lineText)) !== null) {
+                            const dateStr = m[0];
+                            const ctx = lineText.toLowerCase();
+                            
+                            const isProt = protect.some(k => ctx.includes(k));
+                            const isMed = medical.some(k => ctx.includes(k)) || !isProt;
+                            
+                            // Trouver position
+                            let xPos = 0;
+                            let targetItem = null;
+                            let cumul = '';
+                            
+                            for (const it of items) {
+                                if (cumul.length <= m.index && (cumul + it.str).length >= m.index) {
+                                    const offset = m.index - cumul.length;
+                                    const cw = it.width / it.str.length;
+                                    xPos = it.transform[4] + (offset * cw);
+                                    targetItem = it;
+                                    break;
+                                }
+                                cumul += it.str;
+                            }
+                            
+                            if (!targetItem) targetItem = items[0];
+                            
+                            const cw = targetItem.width / targetItem.str.length;
+                            const w = dateStr.length * cw;
+                            
+                            addDate({
+                                id: `d${p}-${dates.length}`,
+                                page: p,
+                                orig: dateStr,
+                                newVal: null,
+                                type: pat.type,
+                                x: xPos || targetItem.transform[4],
+                                y: parseFloat(y),
+                                w: Math.max(w + 10, 80),
+                                h: Math.max(targetItem.height, 12),
+                                isProtected: isProt,
+                                isMedical: isMed
+                            }, items);
+                        }
+                    }
+                }
+            }
+            
+            showDates();
+            updateList();
+            document.getElementById('status').textContent = `${dates.length} date(s)`;
+        }
+
+        function addDate(date, items) {
+            dates.push(date);
+        }
+
+        function showDates() {
+            document.querySelectorAll('.date-overlay, .date-protected').forEach(e => e.remove());
+            
+            dates.forEach((d, i) => {
+                const over = document.getElementById(`over-${d.page}`);
+                if (!over) return;
+                
+                const page = over.parentElement;
+                const ph = page.offsetHeight;
+                
+                const div = document.createElement('div');
+                const x = d.x * scale;
+                const y = ph - (d.y * scale) - (d.h * scale);
+                
+                if (d.isProtected) {
                     div.className = 'date-protected';
-                    div.title = 'Date protégée (naissance/identification)';
+                    div.style.left = x + 'px';
+                    div.style.top = y + 'px';
+                    div.style.width = (d.w * scale) + 'px';
+                    div.style.height = (d.h * scale) + 'px';
+                    div.innerHTML = '🔒';
+                    div.title = 'Protégé';
                 } else {
                     div.className = 'date-overlay';
-                    div.id = date.id;
-                    div.onclick = () => selectDate(date.id);
+                    div.id = d.id;
+                    div.style.left = x + 'px';
+                    div.style.top = y + 'px';
+                    div.style.width = (d.w * scale) + 'px';
+                    div.style.height = (d.h * scale) + 'px';
+                    div.onclick = () => select(d.id);
                     
-                    // Badge numéro
                     const badge = document.createElement('span');
-                    badge.className = 'bg-blue-600 text-white px-1.5 py-0.5 rounded text-[10px] font-bold';
-                    badge.textContent = index + 1;
+                    badge.className = 'bg-blue-600 text-white text-[10px] px-1 rounded font-bold';
+                    badge.textContent = i + 1;
                     div.appendChild(badge);
                     
-                    // Badge Doctolib
-                    if (date.isDoctolib) {
-                        const doctoBadge = document.createElement('span');
-                        doctoBadge.className = 'doctolib-badge';
-                        doctoBadge.textContent = 'DOCTOLIB';
-                        div.appendChild(doctoBadge);
+                    if (d.isDoctolib) {
+                        const db = document.createElement('span');
+                        db.className = 'absolute -top-4 left-0 bg-green-600 text-white text-[9px] px-1 rounded';
+                        db.textContent = 'DOCTOLIB';
+                        div.appendChild(db);
                     }
                 }
                 
-                div.style.left = `${x}px`;
-                div.style.top = `${y}px`;
-                div.style.width = `${date.width * scale}px`;
-                div.style.height = `${date.height * scale + 4}px`;
-                
-                overlay.appendChild(div);
+                over.appendChild(div);
             });
         }
 
-        function selectDate(dateId) {
-            if (selectedDateId) {
-                const prev = document.getElementById(selectedDateId);
-                if (prev) prev.classList.remove('selected');
-            }
+        function select(id) {
+            if (selected) document.getElementById(selected)?.classList.remove('selected');
+            selected = id;
+            const d = dates.find(x => x.id === id);
+            if (!d || d.isProtected) return;
             
-            selectedDateId = dateId;
-            const date = detectedDates.find(d => d.id === dateId);
+            const el = document.getElementById(id);
+            el.classList.add('selected');
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
             
-            if (date && !date.isProtected) {
-                const el = document.getElementById(dateId);
-                el.classList.add('selected');
-                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                
-                document.getElementById('modification-panel').classList.remove('hidden');
-                document.getElementById('current-date-display').textContent = date.original;
-                
-                // Définir date par défaut
-                const today = new Date().toISOString().split('T')[0];
-                document.getElementById('new-date-input').value = today;
-                
-                // Mettre à jour titre
-                const title = date.isDoctolib ? 'Modifier (Doctolib)' : 'Modifier la date';
-                document.getElementById('edit-title').textContent = title;
-            }
-            
-            updateDateList();
+            document.getElementById('edit-box').classList.remove('hidden');
+            document.getElementById('orig-date').textContent = d.orig;
+            document.getElementById('new-date').value = new Date().toISOString().split('T')[0];
         }
 
-        function applyDateChange() {
-            if (!selectedDateId) return;
+        function apply() {
+            if (!selected) return;
+            const d = dates.find(x => x.id === selected);
+            if (!d) return;
             
-            const input = document.getElementById('new-date-input');
-            const newDateVal = input.value;
-            if (!newDateVal) return;
-            
-            const date = detectedDates.find(d => d.id === selectedDateId);
-            if (!date) return;
-            
-            const [year, month, day] = newDateVal.split('-');
+            const [y, m, day] = document.getElementById('new-date').value.split('-');
             let formatted;
             
-            switch(date.type) {
-                case 'slash':
-                    formatted = `${day}/${month}/${year}`;
-                    break;
-                case 'dash':
-                    formatted = `${day}-${month}-${year}`;
-                    break;
-                case 'dot':
-                    formatted = `${day}.${month}.${year}`;
-                    break;
-                case 'text':
-                case 'month-year':
-                    const months = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
-                    formatted = `${parseInt(day)} ${months[parseInt(month)-1]} ${year}`;
-                    break;
-                case 'doctolib':
-                    formatted = `Signé via Doctolib le ${day}/${month}/${year}`;
-                    break;
-                default:
-                    formatted = `${day}/${month}/${year}`;
+            switch(d.type) {
+                case 'slash': formatted = `${day}/${m}/${y}`; break;
+                case 'dash': formatted = `${day}-${m}-${y}`; break;
+                case 'dot': formatted = `${day}.${m}.${y}`; break;
+                case 'text': formatted = `${parseInt(day)} ${months[parseInt(m)-1]} ${y}`; break;
+                case 'doctolib': formatted = `Signé via Doctolib le ${day}/${m}/${y}`; break;
+                default: formatted = `${day}/${m}/${y}`;
             }
             
-            date.newValue = formatted;
+            d.newVal = formatted;
             
-            const el = document.getElementById(selectedDateId);
+            const el = document.getElementById(selected);
             el.classList.remove('selected');
             el.classList.add('modified');
             
-            // Activer download
-            const btn = document.getElementById('download-btn');
-            btn.disabled = false;
-            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            document.getElementById('dl-btn').disabled = false;
+            document.getElementById('dl-btn').classList.remove('opacity-50', 'cursor-not-allowed');
             
-            updateDateList();
-            updateStatus();
-            showToast(`✓ ${date.original} → ${formatted}`);
+            updateList();
         }
 
-        function setToday() {
-            document.getElementById('new-date-input').value = new Date().toISOString().split('T')[0];
+        function today() {
+            document.getElementById('new-date').value = new Date().toISOString().split('T')[0];
         }
 
-        function cancelSelection() {
-            if (selectedDateId) {
-                const el = document.getElementById(selectedDateId);
-                if (el) el.classList.remove('selected');
-            }
-            selectedDateId = null;
-            document.getElementById('modification-panel').classList.add('hidden');
-            updateDateList();
-        }
-
-        function updateDateList() {
+        function updateList() {
             const list = document.getElementById('dates-list');
-            const count = document.getElementById('dates-count');
+            document.getElementById('count').textContent = dates.length;
             
-            count.textContent = detectedDates.length;
-            
-            if (detectedDates.length === 0) {
-                list.innerHTML = '<p class="text-sm text-slate-400 text-center py-4">Aucune date trouvée</p>';
-                return;
-            }
-            
-            list.innerHTML = detectedDates.map((date, idx) => {
-                const isSelected = date.id === selectedDateId;
-                const isModified = date.newValue !== null;
-                const isProtected = date.isProtected;
-                const isDoctolib = date.isDoctolib;
+            list.innerHTML = dates.map((d, i) => {
+                const sel = d.id === selected;
+                const mod = d.newVal;
+                const prot = d.isProtected;
                 
-                let icon = '🔵';
-                if (isProtected) icon = '🔒';
-                else if (isDoctolib) icon = '🟢';
-                else if (isModified) icon = '✅';
+                let icon = mod ? '✅' : (prot ? '🔒' : (d.isDoctolib ? '🟢' : '🔵'));
                 
-                return `
-                    <div onclick="${isProtected ? '' : `selectDate('${date.id}')`}" 
-                         class="p-2 rounded border text-sm ${isSelected ? 'bg-blue-50 border-blue-400 ring-2 ring-blue-200' : 'bg-white border-slate-200'} ${isProtected ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:border-blue-300'}">
-                        <div class="flex justify-between items-start mb-1">
-                            <div class="flex items-center gap-2">
-                                <span class="text-lg">${icon}</span>
-                                <div>
-                                    <div class="font-mono font-bold ${isModified ? 'text-green-600' : 'text-slate-700'}">
-                                        ${isModified ? date.newValue : date.original}
-                                    </div>
-                                    ${isDoctolib ? '<div class="text-[10px] text-green-600 font-semibold">DOCTOLIB</div>' : ''}
-                                </div>
-                            </div>
-                            <span class="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-500">P${date.page}</span>
-                        </div>
-                        <div class="text-xs text-slate-500 truncate pl-7">${date.context.substring(0, 60)}...</div>
-                        ${isProtected ? '<div class="text-[10px] text-red-500 mt-1 pl-7">🔒 Protégé (naissance/ID)</div>' : ''}
+                return `<div onclick="${prot ? '' : `select('${d.id}')`}" 
+                    class="p-2 mb-2 rounded border text-sm cursor-pointer ${sel ? 'bg-blue-50 border-blue-400' : 'bg-white border-slate-200'} ${prot ? 'opacity-50' : ''}">
+                    <div class="flex justify-between">
+                        <span class="font-mono font-bold ${mod ? 'text-green-600' : ''}">${icon} ${mod || d.orig}</span>
+                        <span class="text-xs bg-slate-100 px-1 rounded">P${d.page}</span>
                     </div>
-                `;
+                    ${d.isDoctolib ? '<div class="text-[10px] text-green-600">DOCTOLIB</div>' : ''}
+                </div>`;
             }).join('');
         }
 
-        function updateStatus() {
-            const modified = detectedDates.filter(d => d.newValue).length;
-            const protected = detectedDates.filter(d => d.isProtected).length;
-            const doctolib = detectedDates.filter(d => d.isDoctolib).length;
-            const status = document.getElementById('detection-status');
-            
-            if (detectedDates.length === 0) {
-                status.textContent = 'Aucune date détectée';
-            } else {
-                let text = `${detectedDates.length} date(s)`;
-                if (modified) text += ` • ${modified} modifiée(s)`;
-                if (doctolib) text += ` • ${doctolib} Doctolib`;
-                if (protected) text += ` • ${protected} protégée(s)`;
-                status.textContent = text;
-            }
-        }
-
-        async function downloadModifiedPDF() {
-            const btn = document.getElementById('download-btn');
-            btn.textContent = 'Génération...';
+        async function downloadPDF() {
+            const btn = document.getElementById('dl-btn');
+            btn.textContent = '...';
             btn.disabled = true;
             
             try {
-                const modified = await modifyWithPdfLib();
-                if (modified) {
-                    downloadBlob(modified, 'document-medical-modifie.pdf');
-                    return;
+                // NOUVELLE APPROCHE: Modifier le PDF original avec recouvrement précis
+                const newPdf = await PDFLib.PDFDocument.load(pdfBytes);
+                const pages = newPdf.getPages();
+                const font = await newPdf.embedFont(PDFLib.StandardFonts.Helvetica);
+                const bold = await newPdf.embedFont(PDFLib.StandardFonts.HelveticaBold);
+                
+                const modified = dates.filter(d => d.newVal);
+                
+                for (const d of modified) {
+                    const page = pages[d.page - 1];
+                    const { width, height } = page.getSize();
+                    
+                    // Convertir coordonnées PDF (bottom-left) -> PDF-lib (bottom-left)
+                    // Mais PDF-js donne Y depuis le bas aussi
+                    const pdfY = height - d.y - d.h;
+                    
+                    // 1. Rectangle blanc LARGEMENT plus grand pour effacer TOUTE trace
+                    page.drawRectangle({
+                        x: d.x - 5,
+                        y: pdfY - 2,
+                        width: d.w + 10,
+                        height: d.h + 4,
+                        color: PDFLib.rgb(1, 1, 1),
+                        borderColor: PDFLib.rgb(1, 1, 1),
+                        borderWidth: 2,
+                    });
+                    
+                    // 2. Second rectangle blanc pour être sûr
+                    page.drawRectangle({
+                        x: d.x - 3,
+                        y: pdfY - 1,
+                        width: d.w + 6,
+                        height: d.h + 2,
+                        color: PDFLib.rgb(1, 1, 1),
+                    });
+                    
+                    // 3. Texte noir avec taille ajustée
+                    const fontSize = d.h * 0.85;
+                    const useFont = d.isDoctolib ? bold : font;
+                    
+                    // Ajuster Y pour centrer verticalement
+                    const textY = pdfY + (d.h - fontSize) / 2;
+                    
+                    page.drawText(d.newVal, {
+                        x: d.x,
+                        y: textY,
+                        size: fontSize,
+                        font: useFont,
+                        color: PDFLib.rgb(0, 0, 0),
+                    });
                 }
-            } catch (e) {
-                console.log('Méthode 1 échouée:', e);
-            }
-            
-            try {
-                await downloadWithCanvas();
-            } catch (e) {
-                alert('Erreur lors de la génération');
+                
+                const bytes = await newPdf.save();
+                const blob = new Blob([bytes], { type: 'application/pdf' });
+                
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `document-modifie-${new Date().toISOString().split('T')[0]}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 100);
+                
+            } catch(e) {
+                console.error(e);
+                alert('Erreur: ' + e.message);
             } finally {
                 btn.textContent = 'Télécharger';
                 btn.disabled = false;
             }
         }
-
-        async function modifyWithPdfLib() {
-            const modifiedDates = detectedDates.filter(d => d.newValue);
-            if (!pdfDocument || modifiedDates.length === 0) return null;
-            
-            const newPdf = await PDFLib.PDFDocument.load(currentPDFBytes);
-            const pages = newPdf.getPages();
-            const helvetica = await newPdf.embedFont(PDFLib.StandardFonts.Helvetica);
-            const helveticaBold = await newPdf.embedFont(PDFLib.StandardFonts.HelveticaBold);
-            
-            modifiedDates.forEach(date => {
-                const page = pages[date.page - 1];
-                const { width, height } = page.getSize();
-                
-                // Rectangle blanc
-                page.drawRectangle({
-                    x: date.x - 3,
-                    y: height - date.y - date.height - 3,
-                    width: date.width + 6,
-                    height: date.height + 6,
-                    color: PDFLib.rgb(1, 1, 1),
-                });
-                
-                // Texte
-                const font = date.isDoctolib ? helveticaBold : helvetica;
-                const fontSize = date.height * 0.75;
-                
-                page.drawText(date.newValue, {
-                    x: date.x,
-                    y: height - date.y - (date.height * 0.8),
-                    size: fontSize,
-                    color: PDFLib.rgb(0, 0, 0),
-                    font: font,
-                });
-            });
-            
-            const bytes = await newPdf.save();
-            return new Blob([bytes], { type: 'application/pdf' });
-        }
-
-        async function downloadWithCanvas() {
-            const pages = document.querySelectorAll('.pdf-page');
-            const { jsPDF } = window.jspdf;
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            
-            for (let i = 0; i < pages.length; i++) {
-                if (i > 0) pdf.addPage();
-                
-                const canvas = await html2canvas(pages[i], {
-                    scale: 2,
-                    useCORS: true,
-                    backgroundColor: '#ffffff'
-                });
-                
-                const imgData = canvas.toDataURL('image/png');
-                const imgProps = pdf.getImageProperties(imgData);
-                const pdfWidth = pdf.internal.pageSize.getWidth();
-                const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-                
-                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-            }
-            
-            pdf.save('document-medical-modifie.pdf');
-        }
-
-        function downloadBlob(blob, filename) {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            setTimeout(() => {
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            }, 100);
-        }
-
-        function showScanning(show) {
-            const overlay = document.getElementById('scanning-overlay');
-            const indicator = document.getElementById('scan-indicator');
-            
-            if (show) {
-                overlay.classList.remove('hidden');
-                indicator.classList.remove('hidden');
-            } else {
-                overlay.classList.add('hidden');
-                indicator.classList.add('hidden');
-            }
-        }
-
-        function showToast(msg) {
-            const div = document.createElement('div');
-            div.className = 'fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow-lg z-50 text-sm font-medium';
-            div.textContent = msg;
-            document.body.appendChild(div);
-            setTimeout(() => div.remove(), 3000);
-        }
     </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </body>
 </html>
