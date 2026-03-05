@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Medical Date Editor - Édition Directe de Documents</title>
+    <title>PDF Medical Date Editor Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -18,110 +18,73 @@
         
         .pdf-container {
             background: #525659;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
         }
         
         .pdf-page {
             background: white;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
             position: relative;
             margin: 20px auto;
+            overflow: hidden;
         }
         
         .date-overlay {
             position: absolute;
-            border: 2px solid #3b82f6;
-            background: rgba(59, 130, 246, 0.1);
+            border: 3px solid #3b82f6;
+            background: rgba(59, 130, 246, 0.15);
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.3s ease;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 12px;
-            color: #1e40af;
-            font-weight: 600;
-        }
-        
-        .date-overlay:hover {
-            background: rgba(59, 130, 246, 0.2);
-            border-color: #2563eb;
-            transform: scale(1.02);
             z-index: 10;
         }
         
+        .date-overlay:hover {
+            background: rgba(59, 130, 246, 0.3);
+            border-color: #2563eb;
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+        }
+        
         .date-overlay.selected {
-            background: rgba(245, 158, 11, 0.2);
+            background: rgba(245, 158, 11, 0.3);
             border-color: #f59e0b;
-            box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.3);
+            box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.4), 0 0 20px rgba(245, 158, 11, 0.4);
             z-index: 20;
+            animation: pulse 2s infinite;
         }
         
         .date-overlay.modified {
-            background: rgba(34, 197, 94, 0.2);
+            background: rgba(34, 197, 94, 0.25);
             border-color: #22c55e;
+            border-style: solid;
         }
         
         .date-overlay.modified::after {
-            content: '✓';
+            content: '✓ MODIFIÉ';
             position: absolute;
-            top: -8px;
-            right: -8px;
+            top: -25px;
+            right: 0;
             background: #22c55e;
             color: white;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-        }
-        
-        .editing-panel {
-            backdrop-filter: blur(10px);
-            background: rgba(255, 255, 255, 0.95);
-        }
-        
-        .scan-line {
-            position: absolute;
-            width: 100%;
-            height: 2px;
-            background: linear-gradient(to right, transparent, #3b82f6, transparent);
-            animation: scan 2s linear infinite;
-            opacity: 0;
-            pointer-events: none;
-        }
-        
-        .scanning .scan-line {
-            opacity: 0.6;
-        }
-        
-        @keyframes scan {
-            0% { top: 0; }
-            100% { top: 100%; }
-        }
-        
-        .tooltip {
-            position: absolute;
-            background: #1e293b;
-            color: white;
-            padding: 4px 8px;
+            padding: 2px 8px;
             border-radius: 4px;
-            font-size: 11px;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.2s;
+            font-size: 10px;
+            font-weight: bold;
             white-space: nowrap;
-            z-index: 100;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
         
-        .date-overlay:hover .tooltip {
-            opacity: 1;
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.4); }
+            50% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0.2); }
         }
         
-        .loader {
-            border: 3px solid #f3f4f6;
-            border-top: 3px solid #3b82f6;
+        .loading-spinner {
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #3b82f6;
             border-radius: 50%;
             width: 40px;
             height: 40px;
@@ -132,38 +95,94 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        
+        .scan-line {
+            position: absolute;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(to right, transparent, #3b82f6, #60a5fa, #3b82f6, transparent);
+            box-shadow: 0 0 10px #3b82f6;
+            animation: scan 2s linear infinite;
+            z-index: 100;
+            pointer-events: none;
+        }
+        
+        @keyframes scan {
+            0% { top: 0; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+        
+        .date-badge {
+            position: absolute;
+            background: #3b82f6;
+            color: white;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            top: -20px;
+            left: 0;
+            font-weight: 600;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        
+        .date-overlay:hover .date-badge {
+            opacity: 1;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            transition: all 0.3s;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            transition: all 0.3s;
+        }
+        
+        .btn-success:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(22, 163, 74, 0.4);
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
 
     <!-- Header -->
     <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-lg">
+                <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
                     <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                     </svg>
                 </div>
                 <div>
-                    <h1 class="text-xl font-bold text-slate-900">PDF Medical Editor</h1>
-                    <p class="text-xs text-slate-500">Édition directe de certificats médicaux</p>
+                    <h1 class="text-xl font-bold text-slate-900">PDF Medical Editor Pro</h1>
+                    <p class="text-xs text-slate-500">Édition professionnelle de documents médicaux</p>
                 </div>
             </div>
             
             <div class="flex items-center gap-3">
                 <input type="file" id="pdf-input" accept=".pdf" class="hidden" onchange="handlePDFUpload(event)">
-                <label for="pdf-input" class="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
+                <label for="pdf-input" class="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 border border-slate-300">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
                     </svg>
                     Nouveau PDF
                 </label>
-                <button onclick="downloadModifiedPDF()" id="download-btn" class="hidden bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 shadow-md">
+                <button onclick="downloadModifiedPDF()" id="download-btn" disabled class="hidden btn-success text-white px-6 py-2 rounded-lg text-sm font-medium flex items-center gap-2 opacity-50 cursor-not-allowed">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
                     </svg>
-                    Télécharger PDF
+                    Télécharger PDF Modifié
                 </button>
             </div>
         </div>
@@ -171,154 +190,154 @@
 
     <div class="flex-1 flex overflow-hidden">
         
-        <!-- Sidebar Controls -->
-        <aside class="w-96 bg-white border-r border-slate-200 flex flex-col overflow-y-auto">
+        <!-- Sidebar -->
+        <aside class="w-96 bg-white border-r border-slate-200 flex flex-col overflow-y-auto shadow-lg z-10">
             
             <!-- Upload Section -->
-            <div id="upload-section" class="p-6 border-b border-slate-200">
-                <div class="text-center">
-                    <div class="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-                        </svg>
-                    </div>
-                    <h3 class="text-lg font-semibold text-slate-900 mb-2">Importer un PDF médical</h3>
-                    <p class="text-sm text-slate-600 mb-4">Chargez votre certificat d'arrêt de travail ou tout document médical</p>
-                    <label for="pdf-input" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl cursor-pointer transition-all shadow-lg hover:shadow-xl">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                        </svg>
-                        Sélectionner PDF
-                    </label>
+            <div id="upload-section" class="p-6 flex-1 flex flex-col justify-center items-center text-center">
+                <div class="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mb-4">
+                    <svg class="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                    </svg>
                 </div>
+                <h3 class="text-lg font-semibold text-slate-900 mb-2">Importer un document médical</h3>
+                <p class="text-sm text-slate-600 mb-6">Certificat d'arrêt de travail, ordonnance, compte-rendu médical...</p>
+                <label for="pdf-input" class="btn-primary text-white px-8 py-3 rounded-xl cursor-pointer transition-all shadow-lg hover:shadow-xl flex items-center gap-2 font-medium">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    Charger PDF
+                </label>
             </div>
 
-            <!-- Editor Controls (Hidden by default) -->
+            <!-- Editor Controls -->
             <div id="editor-controls" class="hidden flex-1 flex flex-col">
                 
-                <!-- Detection Status -->
-                <div class="p-4 bg-blue-50 border-b border-blue-100">
+                <!-- Status -->
+                <div class="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100">
                     <div class="flex items-center gap-3">
                         <div id="scan-indicator" class="hidden">
-                            <div class="loader w-5 h-5 border-2 border-blue-200 border-t-blue-600"></div>
+                            <div class="loading-spinner w-6 h-6 border-2"></div>
                         </div>
-                        <div>
-                            <h4 class="font-semibold text-blue-900 text-sm">Analyse du document</h4>
-                            <p id="detection-status" class="text-xs text-blue-700">En attente de fichier...</p>
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-slate-900 text-sm">Analyse intelligente</h4>
+                            <p id="detection-status" class="text-xs text-slate-600 mt-0.5">Scan en cours...</p>
                         </div>
+                        <span id="dates-count" class="bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded-full hidden">0</span>
                     </div>
+                </div>
+
+                <!-- Instructions -->
+                <div class="px-4 py-3 bg-amber-50 border-b border-amber-200">
+                    <p class="text-xs text-amber-800 flex items-start gap-2">
+                        <svg class="w-4 h-4 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span>Cliquez sur une zone bleue sur le document pour modifier la date. Les dates de naissance sont protégées.</span>
+                    </p>
                 </div>
 
                 <!-- Date List -->
                 <div class="flex-1 overflow-y-auto p-4">
-                    <h4 class="font-semibold text-slate-900 mb-3 flex items-center gap-2">
-                        <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                        </svg>
-                        Dates détectées
-                    </h4>
+                    <h4 class="font-semibold text-slate-900 mb-3 text-sm uppercase tracking-wide text-slate-500">Dates détectées</h4>
                     <div id="dates-list" class="space-y-2">
-                        <p class="text-sm text-slate-500 italic">Aucune date détectée</p>
+                        <!-- Rempli dynamiquement -->
                     </div>
                 </div>
 
                 <!-- Modification Panel -->
                 <div id="modification-panel" class="p-4 bg-slate-50 border-t border-slate-200 hidden">
-                    <h4 class="font-semibold text-slate-900 mb-3">Modifier la date sélectionnée</h4>
+                    <h4 class="font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                        </svg>
+                        Modifier la date
+                    </h4>
                     
                     <div class="space-y-3">
-                        <div>
-                            <label class="block text-xs font-medium text-slate-700 mb-1">Date actuelle</label>
-                            <div id="current-date-display" class="px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-600 font-mono"></div>
+                        <div class="bg-white p-3 rounded-lg border border-slate-200">
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Date originale</label>
+                            <div id="current-date-display" class="font-mono text-sm font-semibold text-slate-700"></div>
                         </div>
                         
                         <div>
                             <label class="block text-xs font-medium text-slate-700 mb-1">Nouvelle date</label>
-                            <input type="date" id="new-date-input" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm">
+                            <input type="date" id="new-date-input" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm font-medium">
                         </div>
 
-                        <div class="flex gap-2">
-                            <button onclick="applyDateChange()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors">
-                                Appliquer
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="applyDateChange()" class="btn-primary text-white py-2.5 px-4 rounded-lg text-sm font-semibold flex items-center justify-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                Valider
                             </button>
-                            <button onclick="setToday()" class="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-sm font-medium transition-colors">
+                            <button onclick="setToday()" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 py-2.5 px-4 rounded-lg text-sm font-medium transition-colors">
                                 Aujourd'hui
                             </button>
                         </div>
 
-                        <div class="pt-2 border-t border-slate-200">
-                            <label class="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" id="preserve-format" checked class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500">
-                                <span class="text-xs text-slate-700">Conserver le format original</span>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Info -->
-                <div class="p-4 bg-amber-50 border-t border-amber-200">
-                    <div class="flex gap-2">
-                        <svg class="w-5 h-5 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        <p class="text-xs text-amber-800">
-                            <strong>Protection :</strong> Seules les dates d'arrêt de travail, de prescription et médicales sont modifiables. Les dates de naissance restent verrouillées.
-                        </p>
+                        <button onclick="cancelSelection()" class="w-full text-slate-500 hover:text-slate-700 text-xs py-2">
+                            Annuler la sélection
+                        </button>
                     </div>
                 </div>
             </div>
         </aside>
 
-        <!-- Main Content -->
+        <!-- Main Viewer -->
         <main class="flex-1 pdf-container overflow-auto relative" id="main-viewer">
-            
+            <div id="scanning-overlay" class="hidden absolute inset-0 pointer-events-none z-50">
+                <div class="scan-line"></div>
+            </div>
+
             <!-- Empty State -->
             <div id="empty-state" class="h-full flex items-center justify-center">
                 <div class="text-center text-slate-400">
-                    <svg class="w-24 h-24 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-32 h-32 mx-auto mb-4 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                     </svg>
-                    <p class="text-lg">Importez un PDF pour commencer l'édition</p>
+                    <p class="text-xl font-light">Aucun document chargé</p>
+                    <p class="text-sm mt-2">Importez un PDF médical pour commencer</p>
                 </div>
             </div>
 
             <!-- PDF Viewer -->
-            <div id="pdf-viewer" class="hidden min-h-full p-8">
+            <div id="pdf-viewer" class="hidden min-h-full p-8 pb-20">
                 <div id="pdf-pages" class="space-y-8"></div>
-            </div>
-
-            <!-- Scanning Overlay -->
-            <div id="scanning-overlay" class="hidden absolute inset-0 pointer-events-none">
-                <div class="scan-line"></div>
             </div>
         </main>
     </div>
 
     <script>
-        // Configuration PDF.js
+        // Configuration
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
         
         let currentPDF = null;
         let currentPDFBytes = null;
+        let pdfDocument = null;
         let detectedDates = [];
         let selectedDateId = null;
         let scale = 1.5;
+        let modifiedDates = new Map();
 
-        // Patterns pour la détection de dates médicales
-        const medicalDatePatterns = [
-            { regex: /(\d{2})\/(\d{2})\/(\d{4})/g, type: 'french' },
-            { regex: /(\d{2})-(\d{2})-(\d{4})/g, type: 'dash' },
-            { regex: /(\d{1,2})\s+(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\s+(\d{4})/gi, type: 'text' }
+        // Patterns de détection
+        const datePatterns = [
+            { regex: /(\d{2})\/(\d{2})\/(\d{4})/g, format: 'slash' },
+            { regex: /(\d{2})-(\d{2})-(\d{4})/g, format: 'dash' },
+            { regex: /(\d{1,2})\s+(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\s+(\d{4})/gi, format: 'text' }
         ];
 
-        const medicalContextKeywords = [
+        const medicalKeywords = [
             'arrêt', 'travail', 'jusqu\'au', 'du', 'au', 'prescrit', 'prescription',
             'consultation', 'certificat', 'médical', 'pathologique', 'grossesse',
-            'accident', 'travail', 'maladie', 'professionnelle', 'sorties', 'autorisées'
+            'accident', 'maladie', 'professionnelle', 'sorties', 'autorisées',
+            'reprise', 'contrôle', 'prolongation', 'examen'
         ];
 
         const protectedKeywords = [
-            'né', 'née', 'naissance', 'immatriculation', 'sécurité sociale'
+            'né', 'née', 'naissance', 'immatriculation', 'sécurité sociale',
+            'numéro', 'identification'
         ];
 
         async function handlePDFUpload(event) {
@@ -329,163 +348,180 @@
             }
 
             try {
-                const arrayBuffer = await file.arrayBuffer();
-                currentPDFBytes = arrayBuffer;
-                currentPDF = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                // Reset
+                detectedDates = [];
+                modifiedDates.clear();
+                selectedDateId = null;
                 
+                // Lire le fichier
+                currentPDFBytes = await file.arrayBuffer();
+                pdfDocument = await PDFLib.PDFDocument.load(currentPDFBytes);
+                currentPDF = await pdfjsLib.getDocument({ data: currentPDFBytes }).promise;
+                
+                // UI Updates
                 document.getElementById('upload-section').classList.add('hidden');
                 document.getElementById('editor-controls').classList.remove('hidden');
                 document.getElementById('empty-state').classList.add('hidden');
                 document.getElementById('pdf-viewer').classList.remove('hidden');
                 document.getElementById('download-btn').classList.remove('hidden');
+                document.getElementById('download-btn').disabled = true;
+                document.getElementById('download-btn').classList.add('opacity-50', 'cursor-not-allowed');
                 
-                await renderPDF();
+                await renderAllPages();
                 await analyzeDocument();
                 
             } catch (error) {
-                console.error('Erreur lors du chargement du PDF:', error);
-                alert('Erreur lors du chargement du PDF: ' + error.message);
+                console.error('Erreur:', error);
+                alert('Erreur lors du chargement: ' + error.message);
             }
         }
 
-        async function renderPDF() {
+        async function renderAllPages() {
             const container = document.getElementById('pdf-pages');
             container.innerHTML = '';
             
-            for (let pageNum = 1; pageNum <= currentPDF.numPages; pageNum++) {
-                const page = await currentPDF.getPage(pageNum);
-                const viewport = page.getViewport({ scale });
-                
-                const pageDiv = document.createElement('div');
-                pageDiv.className = 'pdf-page relative';
-                pageDiv.style.width = viewport.width + 'px';
-                pageDiv.style.height = viewport.height + 'px';
-                pageDiv.dataset.pageNumber = pageNum;
-                
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d');
-                canvas.height = viewport.height;
-                canvas.width = viewport.width;
-                
-                await page.render({
-                    canvasContext: context,
-                    viewport: viewport
-                }).promise;
-                
-                pageDiv.appendChild(canvas);
-                
-                // Overlay pour les annotations
-                const overlay = document.createElement('div');
-                overlay.className = 'absolute inset-0';
-                overlay.id = `overlay-page-${pageNum}`;
-                pageDiv.appendChild(overlay);
-                
-                container.appendChild(pageDiv);
+            for (let i = 1; i <= currentPDF.numPages; i++) {
+                await renderPage(i);
             }
         }
 
+        async function renderPage(pageNum) {
+            const page = await currentPDF.getPage(pageNum);
+            const viewport = page.getViewport({ scale });
+            
+            const pageDiv = document.createElement('div');
+            pageDiv.className = 'pdf-page';
+            pageDiv.style.width = viewport.width + 'px';
+            pageDiv.style.height = viewport.height + 'px';
+            pageDiv.id = `page-${pageNum}`;
+            
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            
+            await page.render({
+                canvasContext: context,
+                viewport: viewport
+            }).promise;
+            
+            pageDiv.appendChild(canvas);
+            
+            // Overlay pour interactions
+            const overlay = document.createElement('div');
+            overlay.className = 'absolute inset-0';
+            overlay.id = `overlay-${pageNum}`;
+            pageDiv.appendChild(overlay);
+            
+            document.getElementById('pdf-pages').appendChild(pageDiv);
+        }
+
         async function analyzeDocument() {
-            document.getElementById('scan-indicator').classList.remove('hidden');
-            document.getElementById('scanning-overlay').classList.remove('hidden');
-            document.getElementById('detection-status').textContent = 'Analyse en cours...';
+            showScanning(true);
+            document.getElementById('detection-status').textContent = 'Analyse du texte en cours...';
             
             detectedDates = [];
             
             for (let pageNum = 1; pageNum <= currentPDF.numPages; pageNum++) {
                 const page = await currentPDF.getPage(pageNum);
                 const textContent = await page.getTextContent();
+                const viewport = page.getViewport({ scale });
                 
-                // Analyser le texte pour trouver les dates médicales
+                // Analyser chaque élément de texte
                 const items = textContent.items;
-                let fullText = '';
-                const textMap = [];
                 
-                items.forEach((item, index) => {
-                    fullText += item.str + ' ';
-                    textMap.push({
-                        text: item.str,
-                        transform: item.transform,
-                        width: item.width,
-                        height: item.height,
-                        index: index
-                    });
-                });
-                
-                // Recherche des dates avec contexte médical
-                medicalDatePatterns.forEach(pattern => {
-                    let match;
-                    while ((match = pattern.regex.exec(fullText)) !== null) {
-                        const dateStr = match[0];
-                        const contextStart = Math.max(0, match.index - 100);
-                        const contextEnd = Math.min(fullText.length, match.index + dateStr.length + 100);
-                        const context = fullText.substring(contextStart, contextEnd).toLowerCase();
+                for (let i = 0; i < items.length; i++) {
+                    const item = items[i];
+                    const text = item.str;
+                    
+                    // Chercher des dates dans ce texte
+                    for (const pattern of datePatterns) {
+                        const matches = [...text.matchAll(pattern.regex)];
                         
-                        // Vérifier si c'est une date protégée (naissance, etc.)
-                        const isProtected = protectedKeywords.some(kw => context.includes(kw));
-                        
-                        // Vérifier si c'est une date médicale
-                        const isMedical = medicalContextKeywords.some(kw => context.includes(kw));
-                        
-                        if (!isProtected && isMedical) {
-                            // Trouver la position approximative
-                            const beforeText = fullText.substring(0, match.index);
-                            const wordsBefore = beforeText.split(/\s+/).length;
+                        for (const match of matches) {
+                            const dateStr = match[0];
+                            const index = match.index;
                             
-                            // Estimer la position
-                            let targetItem = textMap[Math.min(wordsBefore, textMap.length - 1)];
-                            if (!targetItem) targetItem = textMap[0];
+                            // Vérifier contexte
+                            const contextText = getContextText(items, i, 50);
+                            const isProtected = protectedKeywords.some(kw => 
+                                contextText.toLowerCase().includes(kw)
+                            );
+                            const isMedical = medicalKeywords.some(kw => 
+                                contextText.toLowerCase().includes(kw)
+                            );
                             
-                            const dateId = `date-${pageNum}-${detectedDates.length}`;
-                            
-                            detectedDates.push({
-                                id: dateId,
-                                page: pageNum,
-                                original: dateStr,
-                                format: pattern.type,
-                                context: context,
-                                x: targetItem.transform[4],
-                                y: targetItem.transform[5],
-                                width: targetItem.width * 3 || 100,
-                                height: targetItem.height * 1.5 || 20,
-                                modified: false
-                            });
+                            if (!isProtected && isMedical) {
+                                // Calculer position précise
+                                const beforeText = text.substring(0, index);
+                                const textWidth = item.width * (dateStr.length / text.length);
+                                const charWidth = item.width / text.length;
+                                const offsetX = context.measureText(beforeText).width || (beforeText.length * charWidth);
+                                
+                                detectedDates.push({
+                                    id: `date-${pageNum}-${detectedDates.length}`,
+                                    page: pageNum,
+                                    original: dateStr,
+                                    newValue: null,
+                                    format: pattern.format,
+                                    context: contextText,
+                                    x: item.transform[4] + offsetX,
+                                    y: item.transform[5],
+                                    width: textWidth,
+                                    height: item.height,
+                                    item: item
+                                });
+                            }
                         }
                     }
-                });
+                }
             }
             
-            // Afficher les zones détectées
+            showScanning(false);
             displayDateOverlays();
             updateDateList();
+            updateStatus();
+        }
+
+        function getContextText(items, currentIndex, radius) {
+            let context = '';
+            const start = Math.max(0, currentIndex - 3);
+            const end = Math.min(items.length, currentIndex + 3);
             
-            document.getElementById('scan-indicator').classList.add('hidden');
-            document.getElementById('scanning-overlay').classList.add('hidden');
-            document.getElementById('detection-status').textContent = `${detectedDates.length} date(s) médicale(s) détectée(s)`;
+            for (let i = start; i < end; i++) {
+                context += items[i].str + ' ';
+            }
+            return context;
         }
 
         function displayDateOverlays() {
             detectedDates.forEach(date => {
-                const overlay = document.getElementById(`overlay-page-${date.page}`);
+                const overlay = document.getElementById(`overlay-${date.page}`);
                 if (!overlay) return;
                 
                 const div = document.createElement('div');
                 div.className = 'date-overlay';
                 div.id = date.id;
-                div.style.left = (date.x * scale) + 'px';
-                div.style.top = (overlay.parentElement.height - (date.y * scale) - (date.height * scale)) + 'px';
-                div.style.width = (date.width * scale) + 'px';
-                div.style.height = (date.height * scale) + 'px';
-                div.innerHTML = `
-                    <span class="tooltip">Cliquez pour modifier</span>
-                `;
                 
+                // Positionner correctement (PDF coords sont du bas vers le haut)
+                const pageHeight = overlay.parentElement.offsetHeight;
+                const x = date.x * scale;
+                const y = pageHeight - (date.y * scale) - (date.height * scale);
+                
+                div.style.left = `${x}px`;
+                div.style.top = `${y}px`;
+                div.style.width = `${date.width * scale + 10}px`;
+                div.style.height = `${date.height * scale + 6}px`;
+                
+                div.innerHTML = `<span class="date-badge">DATE ${detectedDates.indexOf(date) + 1}</span>`;
                 div.onclick = () => selectDate(date.id);
+                
                 overlay.appendChild(div);
             });
         }
 
         function selectDate(dateId) {
-            // Désélectionner précédent
+            // Désélectionner
             if (selectedDateId) {
                 const prev = document.getElementById(selectedDateId);
                 if (prev) prev.classList.remove('selected');
@@ -497,17 +533,15 @@
             if (date) {
                 const element = document.getElementById(dateId);
                 element.classList.add('selected');
+                element.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
                 
-                // Afficher le panneau de modification
+                // Afficher panneau
                 document.getElementById('modification-panel').classList.remove('hidden');
                 document.getElementById('current-date-display').textContent = date.original;
                 
-                // Préremplir avec la date actuelle ou aujourd'hui
+                // Date par défaut = aujourd'hui ou date modifiée précédemment
                 const today = new Date().toISOString().split('T')[0];
                 document.getElementById('new-date-input').value = today;
-                
-                // Scroll vers l'élément
-                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
             
             updateDateList();
@@ -516,8 +550,9 @@
         function applyDateChange() {
             if (!selectedDateId) return;
             
-            const newDateValue = document.getElementById('new-date-input').value;
-            if (!newDateValue) {
+            const input = document.getElementById('new-date-input');
+            const newDate = input.value;
+            if (!newDate) {
                 alert('Veuillez sélectionner une date');
                 return;
             }
@@ -525,37 +560,44 @@
             const date = detectedDates.find(d => d.id === selectedDateId);
             if (!date) return;
             
-            // Formater la nouvelle date selon le format original
-            const [year, month, day] = newDateValue.split('-');
-            let newDateStr;
+            // Formater selon le format original
+            const [year, month, day] = newDate.split('-');
+            let formattedDate;
             
-            if (date.format === 'french') {
-                newDateStr = `${day}/${month}/${year}`;
-            } else if (date.format === 'dash') {
-                newDateStr = `${day}-${month}-${year}`;
-            } else {
-                // Format texte
-                const months = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
-                newDateStr = `${parseInt(day)} ${months[parseInt(month) - 1]} ${year}`;
+            switch(date.format) {
+                case 'slash':
+                    formattedDate = `${day}/${month}/${year}`;
+                    break;
+                case 'dash':
+                    formattedDate = `${day}-${month}-${year}`;
+                    break;
+                case 'text':
+                    const months = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 
+                                   'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+                    formattedDate = `${parseInt(day)} ${months[parseInt(month)-1]} ${year}`;
+                    break;
+                default:
+                    formattedDate = `${day}/${month}/${year}`;
             }
             
-            // Mettre à jour l'affichage
+            // Mettre à jour
+            date.newValue = formattedDate;
+            modifiedDates.set(date.id, date);
+            
+            // UI
             const element = document.getElementById(selectedDateId);
             element.classList.remove('selected');
             element.classList.add('modified');
-            element.title = `Modifié: ${newDateStr}`;
             
-            date.modified = true;
-            date.newValue = newDateStr;
-            
-            document.getElementById('current-date-display').textContent = newDateStr;
+            // Activer bouton download
+            const downloadBtn = document.getElementById('download-btn');
+            downloadBtn.disabled = false;
+            downloadBtn.classList.remove('opacity-50', 'cursor-not-allowed');
             
             updateDateList();
             
-            // Feedback visuel
-            setTimeout(() => {
-                alert(`Date modifiée: ${date.original} → ${newDateStr}`);
-            }, 100);
+            // Feedback
+            showNotification(`Date modifiée: ${date.original} → ${formattedDate}`);
         }
 
         function setToday() {
@@ -563,115 +605,193 @@
             document.getElementById('new-date-input').value = today;
         }
 
+        function cancelSelection() {
+            if (selectedDateId) {
+                const el = document.getElementById(selectedDateId);
+                if (el) el.classList.remove('selected');
+            }
+            selectedDateId = null;
+            document.getElementById('modification-panel').classList.add('hidden');
+            updateDateList();
+        }
+
         function updateDateList() {
             const list = document.getElementById('dates-list');
+            const count = document.getElementById('dates-count');
+            
+            count.textContent = detectedDates.length;
+            count.classList.remove('hidden');
             
             if (detectedDates.length === 0) {
-                list.innerHTML = '<p class="text-sm text-slate-500 italic">Aucune date détectée</p>';
+                list.innerHTML = '<p class="text-sm text-slate-400 text-center py-4">Aucune date médicale détectée</p>';
                 return;
             }
             
-            list.innerHTML = detectedDates.map(date => {
+            list.innerHTML = detectedDates.map((date, idx) => {
                 const isSelected = date.id === selectedDateId;
-                const statusClass = date.modified ? 'text-green-600' : (isSelected ? 'text-blue-600' : 'text-slate-600');
-                const bgClass = isSelected ? 'bg-blue-50 border-blue-200' : 'border-slate-200 hover:bg-slate-50';
+                const isModified = date.newValue !== null;
                 
                 return `
                     <div onclick="selectDate('${date.id}')" 
-                         class="p-3 rounded-lg border cursor-pointer transition-all ${bgClass} ${statusClass}">
+                         class="p-3 rounded-lg border cursor-pointer transition-all ${isSelected ? 'bg-blue-50 border-blue-300 shadow-md' : 'bg-white border-slate-200 hover:border-blue-200'}">
                         <div class="flex items-center justify-between mb-1">
-                            <span class="font-mono font-medium text-sm">${date.modified ? date.newValue : date.original}</span>
-                            ${date.modified ? '<span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Modifié</span>' : ''}
+                            <span class="font-mono text-sm font-bold ${isModified ? 'text-green-600' : 'text-slate-700'}">
+                                ${isModified ? date.newValue : date.original}
+                            </span>
+                            ${isModified ? '<span class="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">MODIFIÉ</span>' : ''}
                         </div>
-                        <p class="text-xs text-slate-500 truncate">Page ${date.page} • ${date.context.substring(0, 50)}...</p>
+                        <div class="flex items-center gap-2 text-xs text-slate-500">
+                            <span class="bg-slate-100 px-1.5 py-0.5 rounded">P${date.page}</span>
+                            <span class="truncate">${date.context.substring(0, 40)}...</span>
+                        </div>
                     </div>
                 `;
             }).join('');
         }
 
-        async function downloadModifiedPDF() {
-            if (!currentPDFBytes) return;
+        function updateStatus() {
+            const modified = detectedDates.filter(d => d.newValue).length;
+            const status = document.getElementById('detection-status');
             
-            try {
-                // Charger le PDF avec pdf-lib pour modification
-                const pdfDoc = await PDFLib.PDFDocument.load(currentPDFBytes);
-                const pages = pdfDoc.getPages();
-                
-                // Pour chaque date modifiée, on ajoute un overlay blanc puis le nouveau texte
-                for (const date of detectedDates) {
-                    if (!date.modified) continue;
-                    
-                    const page = pages[date.page - 1];
-                    const { width, height } = page.getSize();
-                    
-                    // Dessiner un rectangle blanc pour cacher l'ancienne date
-                    page.drawRectangle({
-                        x: date.x,
-                        y: height - date.y - date.height,
-                        width: date.width,
-                        height: date.height,
-                        color: PDFLib.rgb(1, 1, 1),
-                    });
-                    
-                    // Ajouter la nouvelle date
-                    page.drawText(date.newValue, {
-                        x: date.x,
-                        y: height - date.y - (date.height / 2),
-                        size: 10,
-                        color: PDFLib.rgb(0, 0, 0),
-                    });
-                }
-                
-                // Sauvegarder et télécharger
-                const modifiedBytes = await pdfDoc.save();
-                const blob = new Blob([modifiedBytes], { type: 'application/pdf' });
-                const url = URL.createObjectURL(blob);
-                
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'document-modifie-' + new Date().toISOString().split('T')[0] + '.pdf';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                
-            } catch (error) {
-                console.error('Erreur lors de la modification du PDF:', error);
-                
-                // Fallback: créer un PDF avec html2canvas
-                alert('Génération du PDF modifié via capture d\'écran...');
-                await downloadAsImage();
+            if (modified > 0) {
+                status.innerHTML = `<span class="text-green-600 font-semibold">${modified} date(s) modifiée(s)</span> sur ${detectedDates.length} détectées`;
+            } else {
+                status.textContent = `${detectedDates.length} date(s) médicale(s) détectée(s) - Cliquez pour modifier`;
             }
         }
 
-        async function downloadAsImage() {
-            const element = document.getElementById('pdf-pages');
-            const canvas = await html2canvas(element, {
-                scale: 2,
-                useCORS: true,
-                logging: false
-            });
+        async function downloadModifiedPDF() {
+            const btn = document.getElementById('download-btn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Génération...';
+            btn.disabled = true;
             
-            const imgData = canvas.toDataURL('image/png');
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const imgProps = pdf.getImageProperties(imgData);
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+            try {
+                // Méthode 1: Modification directe avec pdf-lib
+                const modifiedPdf = await modifyPDFWithLib();
+                if (modifiedPdf) {
+                    downloadBlob(modifiedPdf, 'document-medical-modifie.pdf');
+                    return;
+                }
+            } catch (e) {
+                console.log('Méthode 1 échouée, tentative méthode 2...', e);
+            }
             
-            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-            pdf.save('document-modifie.pdf');
+            try {
+                // Méthode 2: Capture d'écran avec html2canvas
+                await downloadWithCanvas();
+            } catch (e) {
+                console.error('Erreur:', e);
+                alert('Erreur lors de la génération du PDF. Veuillez réessayer.');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
         }
 
-        // Zoom controls
+        async function modifyPDFWithLib() {
+            if (!pdfDocument || modifiedDates.size === 0) return null;
+            
+            const newPdf = await PDFLib.PDFDocument.load(currentPDFBytes);
+            const pages = newPdf.getPages();
+            
+            modifiedDates.forEach((date, id) => {
+                const page = pages[date.page - 1];
+                const { width, height } = page.getSize();
+                
+                // Dessiner rectangle blanc pour masquer
+                page.drawRectangle({
+                    x: date.x - 2,
+                    y: height - date.y - date.height - 2,
+                    width: date.width + 4,
+                    height: date.height + 4,
+                    color: PDFLib.rgb(1, 1, 1),
+                    borderColor: PDFLib.rgb(1, 1, 1),
+                    borderWidth: 1,
+                });
+                
+                // Ajouter nouveau texte
+                page.drawText(date.newValue, {
+                    x: date.x,
+                    y: height - date.y - (date.height * 0.8),
+                    size: date.height * 0.8,
+                    color: PDFLib.rgb(0, 0, 0),
+                    font: newPdf.embedStandardFont ? newPdf.embedStandardFont(PDFLib.StandardFonts.Helvetica) : undefined,
+                });
+            });
+            
+            const bytes = await newPdf.save();
+            return new Blob([bytes], { type: 'application/pdf' });
+        }
+
+        async function downloadWithCanvas() {
+            const pages = document.querySelectorAll('.pdf-page');
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            
+            for (let i = 0; i < pages.length; i++) {
+                if (i > 0) pdf.addPage();
+                
+                const canvas = await html2canvas(pages[i], {
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: true,
+                    backgroundColor: '#ffffff'
+                });
+                
+                const imgData = canvas.toDataURL('image/png');
+                const imgProps = pdf.getImageProperties(imgData);
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+                
+                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            }
+            
+            pdf.save('document-medical-modifie.pdf');
+        }
+
+        function downloadBlob(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
+        }
+
+        function showScanning(show) {
+            const overlay = document.getElementById('scanning-overlay');
+            const indicator = document.getElementById('scan-indicator');
+            
+            if (show) {
+                overlay.classList.remove('hidden');
+                indicator.classList.remove('hidden');
+            } else {
+                overlay.classList.add('hidden');
+                indicator.classList.add('hidden');
+            }
+        }
+
+        function showNotification(message) {
+            const div = document.createElement('div');
+            div.className = 'fixed bottom-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-xl z-50 animate-bounce';
+            div.textContent = message;
+            document.body.appendChild(div);
+            setTimeout(() => div.remove(), 3000);
+        }
+
+        // Raccourcis clavier
         document.addEventListener('keydown', (e) => {
-            if (e.ctrlKey && e.key === '+') {
+            if (e.key === 'Escape') cancelSelection();
+            if (e.ctrlKey && e.key === 's') {
                 e.preventDefault();
-                scale += 0.1;
-                renderPDF();
-            } else if (e.ctrlKey && e.key === '-') {
-                e.preventDefault();
-                scale = Math.max(0.5, scale - 0.1);
-                renderPDF();
+                if (!document.getElementById('download-btn').disabled) {
+                    downloadModifiedPDF();
+                }
             }
         });
     </script>
