@@ -3,728 +3,678 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Certificats Médicaux Pro</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <title>PDF Medical Date Editor - Édition Directe de Documents</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: #f1f5f9;
         }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f5f5f5;
-            color: #333;
-            line-height: 1.6;
+        
+        .pdf-container {
+            background: #525659;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
         }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        .header {
+        
+        .pdf-page {
             background: white;
-            padding: 20px;
-            margin-bottom: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            position: relative;
+            margin: 20px auto;
         }
-
-        .header h1 {
-            color: #2563eb;
-            font-size: 24px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .main-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-
-        @media (max-width: 1024px) {
-            .main-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .card {
-            background: white;
-            border-radius: 8px;
-            padding: 24px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .card h2 {
-            font-size: 20px;
-            margin-bottom: 20px;
-            color: #1f2937;
-        }
-
-        .form-group {
-            margin-bottom: 16px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 6px;
-            font-weight: 500;
-            color: #374151;
-            font-size: 14px;
-        }
-
-        input, textarea {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            font-size: 14px;
-            font-family: inherit;
-            transition: border-color 0.2s;
-        }
-
-        input:focus, textarea:focus {
-            outline: none;
-            border-color: #2563eb;
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-        }
-
-        textarea {
-            min-height: 120px;
-            resize: vertical;
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-        }
-
-        @media (max-width: 640px) {
-            .form-row {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .signature-tabs {
-            margin-bottom: 16px;
-        }
-
-        .tab-buttons {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 16px;
-        }
-
-        .tab-button {
-            flex: 1;
-            padding: 10px;
-            border: 1px solid #d1d5db;
-            background: white;
-            border-radius: 6px;
+        
+        .date-overlay {
+            position: absolute;
+            border: 2px solid #3b82f6;
+            background: rgba(59, 130, 246, 0.1);
             cursor: pointer;
-            font-weight: 500;
             transition: all 0.2s;
-        }
-
-        .tab-button.active {
-            background: #2563eb;
-            color: white;
-            border-color: #2563eb;
-        }
-
-        .tab-button:hover:not(.active) {
-            background: #f3f4f6;
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        .signature-canvas-container {
-            border: 2px dashed #d1d5db;
-            border-radius: 6px;
-            background: white;
-            padding: 4px;
-        }
-
-        canvas {
-            display: block;
-            width: 100%;
-            height: 160px;
-            cursor: crosshair;
-            border-radius: 4px;
-        }
-
-        .signature-upload {
-            border: 2px dashed #d1d5db;
-            border-radius: 6px;
-            padding: 32px;
-            text-align: center;
-            background: white;
-        }
-
-        .signature-preview {
-            max-height: 160px;
-            margin: 0 auto;
-        }
-
-        .button-group {
-            display: flex;
-            gap: 12px;
-            margin-top: 20px;
-            flex-wrap: wrap;
-        }
-
-        button {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 6px;
-            font-weight: 500;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .btn-primary {
-            background: #2563eb;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #1d4ed8;
-        }
-
-        .btn-secondary {
-            background: #f3f4f6;
-            color: #374151;
-            border: 1px solid #d1d5db;
-        }
-
-        .btn-secondary:hover {
-            background: #e5e7eb;
-        }
-
-        .btn-small {
-            padding: 6px 12px;
-            font-size: 13px;
-        }
-
-        .certificate-preview {
-            background: white;
-            padding: 48px;
-            font-family: Georgia, serif;
-            color: #000;
-            border: 1px solid #d1d5db;
-            border-radius: 8px;
-            min-height: 600px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-
-        .cert-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 40px;
-        }
-
-        .doctor-info {
-            line-height: 1.6;
-        }
-
-        .doctor-name {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-
-        .doctor-details {
-            font-size: 12px;
-        }
-
-        .cert-date {
-            font-size: 12px;
-            text-align: right;
-        }
-
-        .cert-body {
-            margin-bottom: 40px;
-            min-height: 250px;
-        }
-
-        .cert-text {
-            margin-bottom: 24px;
-            line-height: 1.8;
-        }
-
-        .patient-info {
-            margin-top: 20px;
-        }
-
-        .patient-name {
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-
-        .cert-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-            margin-top: 60px;
-        }
-
-        .signature-box {
-            border: 2px solid #93c5fd;
-            border-radius: 6px;
-            padding: 16px;
-            width: 200px;
-            height: 120px;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(37, 99, 235, 0.02);
-        }
-
-        .signature-box img {
-            max-width: 100%;
-            max-height: 100px;
-        }
-
-        .signature-label {
-            text-align: center;
-            font-size: 11px;
-            margin-top: 8px;
-            color: #6b7280;
-        }
-
-        .page-number {
-            text-align: right;
-            font-size: 11px;
-            color: #6b7280;
-            margin-top: 32px;
-        }
-
-        .sticky-preview {
-            position: sticky;
-            top: 20px;
-        }
-
-        .preview-title {
-            font-size: 16px;
+            font-size: 12px;
+            color: #1e40af;
             font-weight: 600;
-            margin-bottom: 16px;
-            color: #1f2937;
         }
-
-        .icon {
-            width: 18px;
-            height: 18px;
+        
+        .date-overlay:hover {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: #2563eb;
+            transform: scale(1.02);
+            z-index: 10;
+        }
+        
+        .date-overlay.selected {
+            background: rgba(245, 158, 11, 0.2);
+            border-color: #f59e0b;
+            box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.3);
+            z-index: 20;
+        }
+        
+        .date-overlay.modified {
+            background: rgba(34, 197, 94, 0.2);
+            border-color: #22c55e;
+        }
+        
+        .date-overlay.modified::after {
+            content: '✓';
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #22c55e;
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+        
+        .editing-panel {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.95);
+        }
+        
+        .scan-line {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(to right, transparent, #3b82f6, transparent);
+            animation: scan 2s linear infinite;
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .scanning .scan-line {
+            opacity: 0.6;
+        }
+        
+        @keyframes scan {
+            0% { top: 0; }
+            100% { top: 100%; }
+        }
+        
+        .tooltip {
+            position: absolute;
+            background: #1e293b;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            white-space: nowrap;
+            z-index: 100;
+        }
+        
+        .date-overlay:hover .tooltip {
+            opacity: 1;
+        }
+        
+        .loader {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>
-                <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                </svg>
-                Certificats Médicaux Pro
-            </h1>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-lg">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-slate-900">PDF Medical Editor</h1>
+                    <p class="text-xs text-slate-500">Édition directe de certificats médicaux</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <input type="file" id="pdf-input" accept=".pdf" class="hidden" onchange="handlePDFUpload(event)">
+                <label for="pdf-input" class="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                    </svg>
+                    Nouveau PDF
+                </label>
+                <button onclick="downloadModifiedPDF()" id="download-btn" class="hidden bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 shadow-md">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                    </svg>
+                    Télécharger PDF
+                </button>
+            </div>
         </div>
+    </header>
 
-        <div class="main-grid">
-            <div>
-                <div class="card">
-                    <h2>Nouveau Certificat Médical</h2>
-                    <form id="certificateForm">
-                        <div class="form-group">
-                            <label for="patientName">Nom du patient *</label>
-                            <input type="text" id="patientName" required placeholder="Mme/M. Nom Prénom">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="patientAddress">Adresse du patient *</label>
-                            <input type="text" id="patientAddress" required placeholder="demeurant 123 rue Example, 75000 Paris">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="certificateText">Contenu du certificat *</label>
-                            <textarea id="certificateText" required></textarea>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="certificateDate">Date *</label>
-                                <input type="date" id="certificateDate" required>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="location">Lieu *</label>
-                                <input type="text" id="location" required placeholder="Paris">
-                            </div>
-                        </div>
-
-                        <div class="signature-tabs">
-                            <label>Signature</label>
-                            <div class="tab-buttons">
-                                <button type="button" class="tab-button active" data-tab="draw">Dessiner</button>
-                                <button type="button" class="tab-button" data-tab="upload">Importer</button>
-                            </div>
-
-                            <div class="tab-content active" id="draw-tab">
-                                <div class="signature-canvas-container">
-                                    <canvas id="signatureCanvas"></canvas>
-                                </div>
-                                <div class="button-group">
-                                    <button type="button" class="btn-secondary btn-small" id="clearSignature">
-                                        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                        </svg>
-                                        Effacer
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div class="tab-content" id="upload-tab">
-                                <div class="signature-upload">
-                                    <div id="uploadedSignaturePreview"></div>
-                                    <input type="file" id="signatureUpload" accept="image/*" style="margin-top: 12px;">
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="button-group">
-                            <button type="button" class="btn-primary" id="generatePDF">
-                                <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                </svg>
-                                Générer PDF
-                            </button>
-                            <button type="button" class="btn-secondary" id="resetForm">
-                                <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                                </svg>
-                                Réinitialiser
-                            </button>
-                        </div>
-                    </form>
+    <div class="flex-1 flex overflow-hidden">
+        
+        <!-- Sidebar Controls -->
+        <aside class="w-96 bg-white border-r border-slate-200 flex flex-col overflow-y-auto">
+            
+            <!-- Upload Section -->
+            <div id="upload-section" class="p-6 border-b border-slate-200">
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold text-slate-900 mb-2">Importer un PDF médical</h3>
+                    <p class="text-sm text-slate-600 mb-4">Chargez votre certificat d'arrêt de travail ou tout document médical</p>
+                    <label for="pdf-input" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl cursor-pointer transition-all shadow-lg hover:shadow-xl">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        Sélectionner PDF
+                    </label>
                 </div>
             </div>
 
-            <div class="sticky-preview">
-                <h3 class="preview-title">Aperçu du certificat</h3>
-                <div class="certificate-preview" id="certificatePreview">
-                    <div class="cert-header">
-                        <div class="doctor-info">
-                            <div class="doctor-name" id="previewDoctorName">Dr Sarah Namer</div>
-                            <div class="doctor-details" id="previewDoctorAddress">45 Boulevard de Cimiez</div>
-                            <div class="doctor-details" id="previewDoctorCity">06000 Nice</div>
-                            <div class="doctor-details" id="previewDoctorPhone">Tél: 04 92 14 83 03</div>
+            <!-- Editor Controls (Hidden by default) -->
+            <div id="editor-controls" class="hidden flex-1 flex flex-col">
+                
+                <!-- Detection Status -->
+                <div class="p-4 bg-blue-50 border-b border-blue-100">
+                    <div class="flex items-center gap-3">
+                        <div id="scan-indicator" class="hidden">
+                            <div class="loader w-5 h-5 border-2 border-blue-200 border-t-blue-600"></div>
                         </div>
-                        <div class="cert-date" id="previewDate">Le 09 nov. 2025</div>
-                    </div>
-
-                    <div class="cert-body">
-                        <div class="cert-text" id="previewText">
-                            Je soussigné(e) Docteur Sarah Namer certifie avoir vu ce jour en consultation
-                        </div>
-
-                        <div class="patient-info">
-                            <div class="patient-name" id="previewPatientName"></div>
-                            <div class="doctor-details" id="previewPatientAddress"></div>
-                        </div>
-                    </div>
-
-                    <div class="cert-footer">
-                        <div class="doctor-details" id="previewLocation">Fait à Nice, le 09 nov. 2025</div>
                         <div>
-                            <div class="signature-box" id="previewSignatureBox">
-                                <span style="font-size: 11px; color: #9ca3af;">Zone de signature</span>
-                            </div>
-                            <div class="signature-label" id="previewSignatureLabel">Dr Sarah Namer</div>
+                            <h4 class="font-semibold text-blue-900 text-sm">Analyse du document</h4>
+                            <p id="detection-status" class="text-xs text-blue-700">En attente de fichier...</p>
                         </div>
                     </div>
+                </div>
 
-                    <div class="page-number">1/1</div>
+                <!-- Date List -->
+                <div class="flex-1 overflow-y-auto p-4">
+                    <h4 class="font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                        Dates détectées
+                    </h4>
+                    <div id="dates-list" class="space-y-2">
+                        <p class="text-sm text-slate-500 italic">Aucune date détectée</p>
+                    </div>
+                </div>
+
+                <!-- Modification Panel -->
+                <div id="modification-panel" class="p-4 bg-slate-50 border-t border-slate-200 hidden">
+                    <h4 class="font-semibold text-slate-900 mb-3">Modifier la date sélectionnée</h4>
+                    
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-700 mb-1">Date actuelle</label>
+                            <div id="current-date-display" class="px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-600 font-mono"></div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-xs font-medium text-slate-700 mb-1">Nouvelle date</label>
+                            <input type="date" id="new-date-input" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm">
+                        </div>
+
+                        <div class="flex gap-2">
+                            <button onclick="applyDateChange()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors">
+                                Appliquer
+                            </button>
+                            <button onclick="setToday()" class="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-sm font-medium transition-colors">
+                                Aujourd'hui
+                            </button>
+                        </div>
+
+                        <div class="pt-2 border-t border-slate-200">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="preserve-format" checked class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500">
+                                <span class="text-xs text-slate-700">Conserver le format original</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Info -->
+                <div class="p-4 bg-amber-50 border-t border-amber-200">
+                    <div class="flex gap-2">
+                        <svg class="w-5 h-5 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <p class="text-xs text-amber-800">
+                            <strong>Protection :</strong> Seules les dates d'arrêt de travail, de prescription et médicales sont modifiables. Les dates de naissance restent verrouillées.
+                        </p>
+                    </div>
                 </div>
             </div>
-        </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 pdf-container overflow-auto relative" id="main-viewer">
+            
+            <!-- Empty State -->
+            <div id="empty-state" class="h-full flex items-center justify-center">
+                <div class="text-center text-slate-400">
+                    <svg class="w-24 h-24 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <p class="text-lg">Importez un PDF pour commencer l'édition</p>
+                </div>
+            </div>
+
+            <!-- PDF Viewer -->
+            <div id="pdf-viewer" class="hidden min-h-full p-8">
+                <div id="pdf-pages" class="space-y-8"></div>
+            </div>
+
+            <!-- Scanning Overlay -->
+            <div id="scanning-overlay" class="hidden absolute inset-0 pointer-events-none">
+                <div class="scan-line"></div>
+            </div>
+        </main>
     </div>
 
     <script>
-        // Configuration du médecin (modifiable)
-        const doctorInfo = {
-            name: "Dr Sarah Namer",
-            address: "45 Boulevard de Cimiez",
-            city: "Nice",
-            postalCode: "06000",
-            phone: "04 92 14 83 03"
-        };
+        // Configuration PDF.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        
+        let currentPDF = null;
+        let currentPDFBytes = null;
+        let detectedDates = [];
+        let selectedDateId = null;
+        let scale = 1.5;
 
-        // Variables globales
-        let signatureDataUrl = '';
-        let isDrawing = false;
-        const canvas = document.getElementById('signatureCanvas');
-        const ctx = canvas.getContext('2d');
+        // Patterns pour la détection de dates médicales
+        const medicalDatePatterns = [
+            { regex: /(\d{2})\/(\d{2})\/(\d{4})/g, type: 'french' },
+            { regex: /(\d{2})-(\d{2})-(\d{4})/g, type: 'dash' },
+            { regex: /(\d{1,2})\s+(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\s+(\d{4})/gi, type: 'text' }
+        ];
 
-        // Initialisation
-        function init() {
-            // Initialiser la date
-            document.getElementById('certificateDate').valueAsDate = new Date();
-            document.getElementById('location').value = doctorInfo.city;
-            document.getElementById('certificateText').value = `Je soussigné(e) Docteur ${doctorInfo.name} certifie avoir vu ce jour en consultation`;
+        const medicalContextKeywords = [
+            'arrêt', 'travail', 'jusqu\'au', 'du', 'au', 'prescrit', 'prescription',
+            'consultation', 'certificat', 'médical', 'pathologique', 'grossesse',
+            'accident', 'travail', 'maladie', 'professionnelle', 'sorties', 'autorisées'
+        ];
 
-            // Configurer le canvas
-            setupCanvas();
-            
-            // Event listeners
-            setupEventListeners();
-            
-            // Mise à jour initiale de l'aperçu
-            updatePreview();
-        }
+        const protectedKeywords = [
+            'né', 'née', 'naissance', 'immatriculation', 'sécurité sociale'
+        ];
 
-        function setupCanvas() {
-            const rect = canvas.getBoundingClientRect();
-            canvas.width = rect.width * 2;
-            canvas.height = 160 * 2;
-            ctx.scale(2, 2);
-            ctx.strokeStyle = '#000';
-            ctx.lineWidth = 2;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-        }
-
-        function setupEventListeners() {
-            // Tabs
-            document.querySelectorAll('.tab-button').forEach(button => {
-                button.addEventListener('click', function() {
-                    const tab = this.dataset.tab;
-                    document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
-                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-                    this.classList.add('active');
-                    document.getElementById(`${tab}-tab`).classList.add('active');
-                });
-            });
-
-            // Canvas drawing
-            canvas.addEventListener('mousedown', startDrawing);
-            canvas.addEventListener('mousemove', draw);
-            canvas.addEventListener('mouseup', stopDrawing);
-            canvas.addEventListener('mouseout', stopDrawing);
-            canvas.addEventListener('touchstart', handleTouch);
-            canvas.addEventListener('touchmove', handleTouch);
-            canvas.addEventListener('touchend', stopDrawing);
-
-            // Clear signature
-            document.getElementById('clearSignature').addEventListener('click', clearSignature);
-
-            // Upload signature
-            document.getElementById('signatureUpload').addEventListener('change', handleSignatureUpload);
-
-            // Form inputs
-            document.getElementById('patientName').addEventListener('input', updatePreview);
-            document.getElementById('patientAddress').addEventListener('input', updatePreview);
-            document.getElementById('certificateText').addEventListener('input', updatePreview);
-            document.getElementById('certificateDate').addEventListener('change', updatePreview);
-            document.getElementById('location').addEventListener('change', updatePreview);
-
-            // Buttons
-            document.getElementById('generatePDF').addEventListener('click', generatePDF);
-            document.getElementById('resetForm').addEventListener('click', resetForm);
-        }
-
-        function startDrawing(e) {
-            isDrawing = true;
-            const rect = canvas.getBoundingClientRect();
-            const x = (e.clientX - rect.left) / 2;
-            const y = (e.clientY - rect.top) / 2;
-            ctx.beginPath();
-            ctx.moveTo(x, y);
-        }
-
-        function draw(e) {
-            if (!isDrawing) return;
-            const rect = canvas.getBoundingClientRect();
-            const x = (e.clientX - rect.left) / 2;
-            const y = (e.clientY - rect.top) / 2;
-            ctx.lineTo(x, y);
-            ctx.stroke();
-        }
-
-        function stopDrawing() {
-            if (isDrawing) {
-                isDrawing = false;
-                signatureDataUrl = canvas.toDataURL();
-                updatePreview();
+        async function handlePDFUpload(event) {
+            const file = event.target.files[0];
+            if (!file || file.type !== 'application/pdf') {
+                alert('Veuillez sélectionner un fichier PDF valide');
+                return;
             }
-        }
 
-        function handleTouch(e) {
-            e.preventDefault();
-            const touch = e.touches[0];
-            const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
-                clientX: touch.clientX,
-                clientY: touch.clientY
-            });
-            canvas.dispatchEvent(mouseEvent);
-        }
-
-        function clearSignature() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            signatureDataUrl = '';
-            updatePreview();
-        }
-
-        function handleSignatureUpload(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    signatureDataUrl = event.target.result;
-                    const preview = document.getElementById('uploadedSignaturePreview');
-                    preview.innerHTML = `<img src="${signatureDataUrl}" class="signature-preview">`;
-                    updatePreview();
-                };
-                reader.readAsDataURL(file);
-            }
-        }
-
-        function formatDate(dateString) {
-            const date = new Date(dateString);
-            return date.toLocaleDateString('fr-FR', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric'
-            });
-        }
-
-        function updatePreview() {
-            const patientName = document.getElementById('patientName').value;
-            const patientAddress = document.getElementById('patientAddress').value;
-            const certificateText = document.getElementById('certificateText').value;
-            const certificateDate = document.getElementById('certificateDate').value;
-            const location = document.getElementById('location').value;
-
-            document.getElementById('previewPatientName').textContent = patientName || '';
-            document.getElementById('previewPatientAddress').textContent = patientAddress || '';
-            document.getElementById('previewText').textContent = certificateText || 'Je soussigné(e) Docteur certifie avoir vu ce jour en consultation';
-            
-            const formattedDate = certificateDate ? formatDate(certificateDate) : formatDate(new Date().toISOString());
-            document.getElementById('previewDate').textContent = `Le ${formattedDate}`;
-            document.getElementById('previewLocation').textContent = `Fait à ${location || doctorInfo.city}, le ${formattedDate}`;
-
-            // Update signature preview
-            const signatureBox = document.getElementById('previewSignatureBox');
-            if (signatureDataUrl) {
-                signatureBox.innerHTML = `<img src="${signatureDataUrl}" style="max-width: 100%; max-height: 100px;">`;
-            } else {
-                signatureBox.innerHTML = '<span style="font-size: 11px; color: #9ca3af;">Zone de signature</span>';
-            }
-        }
-
-        function generatePDF() {
             try {
-                const { jsPDF } = window.jspdf;
-                const pdf = new jsPDF();
-                const pageWidth = pdf.internal.pageSize.getWidth();
-                const margin = 20;
-                let y = 30;
-
-                // En-tête du docteur
-                pdf.setFontSize(14);
-                pdf.text(doctorInfo.name, margin, y);
-                y += 7;
-
-                pdf.setFontSize(10);
-                pdf.text(doctorInfo.address, margin, y);
-                y += 5;
-                pdf.text(`${doctorInfo.postalCode} ${doctorInfo.city}`, margin, y);
-                y += 5;
-                pdf.text(`Tél: ${doctorInfo.phone}`, margin, y);
-
-                // Date en haut à droite
-                const certificateDate = document.getElementById('certificateDate').value;
-                const dateText = formatDate(certificateDate);
-                pdf.text(`Le ${dateText}`, pageWidth - margin - 40, 30);
-
-                // Contenu du certificat
-                y = 70;
-                const certificateText = document.getElementById('certificateText').value;
-                const textLines = pdf.splitTextToSize(certificateText, pageWidth - 2 * margin);
-                pdf.text(textLines, margin, y);
-                y += textLines.length * 7 + 15;
-
-                // Informations patient
-                const patientName = document.getElementById('patientName').value;
-                const patientAddress = document.getElementById('patientAddress').value;
-
-                if (patientName) {
-                    pdf.setFont('helvetica', 'bold');
-                    pdf.text(patientName, margin, y);
-                    pdf.setFont('helvetica', 'normal');
-                    y += 7;
-                }
-
-                if (patientAddress) {
-                    pdf.text(patientAddress, margin, y);
-                    y += 7;
-                }
-
-                // Bas de page
-                y = pdf.internal.pageSize.getHeight() - 60;
-                const location = document.getElementById('location').value;
-                pdf.text(`Fait à ${location}, le ${dateText}`, margin, y);
-
-                // Signature
-                if (signatureDataUrl) {
-                    try {
-                        const signatureX = pageWidth - margin - 50;
-                        const signatureY = y - 35;
-                        pdf.addImage(signatureDataUrl, 'PNG', signatureX, signatureY, 50, 25);
-                    } catch (error) {
-                        console.error("Erreur lors de l'ajout de la signature:", error);
-                    }
-                }
-
-                // Générer un nom de fichier valide
-                const patientNameForFile = patientName 
-                    ? patientName.replace(/[^a-zA-Z0-9]/g, '_')
-                    : 'patient';
-                const fileName = `certificat_${patientNameForFile}_${certificateDate}.pdf`;
+                const arrayBuffer = await file.arrayBuffer();
+                currentPDFBytes = arrayBuffer;
+                currentPDF = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
                 
-                pdf.save(fileName);
-                alert('PDF généré avec succès!');
+                document.getElementById('upload-section').classList.add('hidden');
+                document.getElementById('editor-controls').classList.remove('hidden');
+                document.getElementById('empty-state').classList.add('hidden');
+                document.getElementById('pdf-viewer').classList.remove('hidden');
+                document.getElementById('download-btn').classList.remove('hidden');
+                
+                await renderPDF();
+                await analyzeDocument();
+                
             } catch (error) {
-                console.error('Erreur lors de la génération du PDF:', error);
-                alert('Erreur lors de la génération du PDF. Veuillez vérifier que tous les champs sont remplis correctement.');
+                console.error('Erreur lors du chargement du PDF:', error);
+                alert('Erreur lors du chargement du PDF: ' + error.message);
             }
         }
 
-        function resetForm() {
-            document.getElementById('certificateForm').reset();
-            document.getElementById('certificateDate').valueAsDate = new Date();
-            document.getElementById('location').value = doctorInfo.city;
-            document.getElementById('certificateText').value = `Je soussigné(e) Docteur ${doctorInfo.name} certifie avoir vu ce jour en consultation`;
-            clearSignature();
-            document.getElementById('uploadedSignaturePreview').innerHTML = '';
-            updatePreview();
+        async function renderPDF() {
+            const container = document.getElementById('pdf-pages');
+            container.innerHTML = '';
+            
+            for (let pageNum = 1; pageNum <= currentPDF.numPages; pageNum++) {
+                const page = await currentPDF.getPage(pageNum);
+                const viewport = page.getViewport({ scale });
+                
+                const pageDiv = document.createElement('div');
+                pageDiv.className = 'pdf-page relative';
+                pageDiv.style.width = viewport.width + 'px';
+                pageDiv.style.height = viewport.height + 'px';
+                pageDiv.dataset.pageNumber = pageNum;
+                
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+                
+                await page.render({
+                    canvasContext: context,
+                    viewport: viewport
+                }).promise;
+                
+                pageDiv.appendChild(canvas);
+                
+                // Overlay pour les annotations
+                const overlay = document.createElement('div');
+                overlay.className = 'absolute inset-0';
+                overlay.id = `overlay-page-${pageNum}`;
+                pageDiv.appendChild(overlay);
+                
+                container.appendChild(pageDiv);
+            }
         }
 
-        // Lancer l'application
-        window.addEventListener('DOMContentLoaded', init);
+        async function analyzeDocument() {
+            document.getElementById('scan-indicator').classList.remove('hidden');
+            document.getElementById('scanning-overlay').classList.remove('hidden');
+            document.getElementById('detection-status').textContent = 'Analyse en cours...';
+            
+            detectedDates = [];
+            
+            for (let pageNum = 1; pageNum <= currentPDF.numPages; pageNum++) {
+                const page = await currentPDF.getPage(pageNum);
+                const textContent = await page.getTextContent();
+                
+                // Analyser le texte pour trouver les dates médicales
+                const items = textContent.items;
+                let fullText = '';
+                const textMap = [];
+                
+                items.forEach((item, index) => {
+                    fullText += item.str + ' ';
+                    textMap.push({
+                        text: item.str,
+                        transform: item.transform,
+                        width: item.width,
+                        height: item.height,
+                        index: index
+                    });
+                });
+                
+                // Recherche des dates avec contexte médical
+                medicalDatePatterns.forEach(pattern => {
+                    let match;
+                    while ((match = pattern.regex.exec(fullText)) !== null) {
+                        const dateStr = match[0];
+                        const contextStart = Math.max(0, match.index - 100);
+                        const contextEnd = Math.min(fullText.length, match.index + dateStr.length + 100);
+                        const context = fullText.substring(contextStart, contextEnd).toLowerCase();
+                        
+                        // Vérifier si c'est une date protégée (naissance, etc.)
+                        const isProtected = protectedKeywords.some(kw => context.includes(kw));
+                        
+                        // Vérifier si c'est une date médicale
+                        const isMedical = medicalContextKeywords.some(kw => context.includes(kw));
+                        
+                        if (!isProtected && isMedical) {
+                            // Trouver la position approximative
+                            const beforeText = fullText.substring(0, match.index);
+                            const wordsBefore = beforeText.split(/\s+/).length;
+                            
+                            // Estimer la position
+                            let targetItem = textMap[Math.min(wordsBefore, textMap.length - 1)];
+                            if (!targetItem) targetItem = textMap[0];
+                            
+                            const dateId = `date-${pageNum}-${detectedDates.length}`;
+                            
+                            detectedDates.push({
+                                id: dateId,
+                                page: pageNum,
+                                original: dateStr,
+                                format: pattern.type,
+                                context: context,
+                                x: targetItem.transform[4],
+                                y: targetItem.transform[5],
+                                width: targetItem.width * 3 || 100,
+                                height: targetItem.height * 1.5 || 20,
+                                modified: false
+                            });
+                        }
+                    }
+                });
+            }
+            
+            // Afficher les zones détectées
+            displayDateOverlays();
+            updateDateList();
+            
+            document.getElementById('scan-indicator').classList.add('hidden');
+            document.getElementById('scanning-overlay').classList.add('hidden');
+            document.getElementById('detection-status').textContent = `${detectedDates.length} date(s) médicale(s) détectée(s)`;
+        }
+
+        function displayDateOverlays() {
+            detectedDates.forEach(date => {
+                const overlay = document.getElementById(`overlay-page-${date.page}`);
+                if (!overlay) return;
+                
+                const div = document.createElement('div');
+                div.className = 'date-overlay';
+                div.id = date.id;
+                div.style.left = (date.x * scale) + 'px';
+                div.style.top = (overlay.parentElement.height - (date.y * scale) - (date.height * scale)) + 'px';
+                div.style.width = (date.width * scale) + 'px';
+                div.style.height = (date.height * scale) + 'px';
+                div.innerHTML = `
+                    <span class="tooltip">Cliquez pour modifier</span>
+                `;
+                
+                div.onclick = () => selectDate(date.id);
+                overlay.appendChild(div);
+            });
+        }
+
+        function selectDate(dateId) {
+            // Désélectionner précédent
+            if (selectedDateId) {
+                const prev = document.getElementById(selectedDateId);
+                if (prev) prev.classList.remove('selected');
+            }
+            
+            selectedDateId = dateId;
+            const date = detectedDates.find(d => d.id === dateId);
+            
+            if (date) {
+                const element = document.getElementById(dateId);
+                element.classList.add('selected');
+                
+                // Afficher le panneau de modification
+                document.getElementById('modification-panel').classList.remove('hidden');
+                document.getElementById('current-date-display').textContent = date.original;
+                
+                // Préremplir avec la date actuelle ou aujourd'hui
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('new-date-input').value = today;
+                
+                // Scroll vers l'élément
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            
+            updateDateList();
+        }
+
+        function applyDateChange() {
+            if (!selectedDateId) return;
+            
+            const newDateValue = document.getElementById('new-date-input').value;
+            if (!newDateValue) {
+                alert('Veuillez sélectionner une date');
+                return;
+            }
+            
+            const date = detectedDates.find(d => d.id === selectedDateId);
+            if (!date) return;
+            
+            // Formater la nouvelle date selon le format original
+            const [year, month, day] = newDateValue.split('-');
+            let newDateStr;
+            
+            if (date.format === 'french') {
+                newDateStr = `${day}/${month}/${year}`;
+            } else if (date.format === 'dash') {
+                newDateStr = `${day}-${month}-${year}`;
+            } else {
+                // Format texte
+                const months = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+                newDateStr = `${parseInt(day)} ${months[parseInt(month) - 1]} ${year}`;
+            }
+            
+            // Mettre à jour l'affichage
+            const element = document.getElementById(selectedDateId);
+            element.classList.remove('selected');
+            element.classList.add('modified');
+            element.title = `Modifié: ${newDateStr}`;
+            
+            date.modified = true;
+            date.newValue = newDateStr;
+            
+            document.getElementById('current-date-display').textContent = newDateStr;
+            
+            updateDateList();
+            
+            // Feedback visuel
+            setTimeout(() => {
+                alert(`Date modifiée: ${date.original} → ${newDateStr}`);
+            }, 100);
+        }
+
+        function setToday() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('new-date-input').value = today;
+        }
+
+        function updateDateList() {
+            const list = document.getElementById('dates-list');
+            
+            if (detectedDates.length === 0) {
+                list.innerHTML = '<p class="text-sm text-slate-500 italic">Aucune date détectée</p>';
+                return;
+            }
+            
+            list.innerHTML = detectedDates.map(date => {
+                const isSelected = date.id === selectedDateId;
+                const statusClass = date.modified ? 'text-green-600' : (isSelected ? 'text-blue-600' : 'text-slate-600');
+                const bgClass = isSelected ? 'bg-blue-50 border-blue-200' : 'border-slate-200 hover:bg-slate-50';
+                
+                return `
+                    <div onclick="selectDate('${date.id}')" 
+                         class="p-3 rounded-lg border cursor-pointer transition-all ${bgClass} ${statusClass}">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="font-mono font-medium text-sm">${date.modified ? date.newValue : date.original}</span>
+                            ${date.modified ? '<span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Modifié</span>' : ''}
+                        </div>
+                        <p class="text-xs text-slate-500 truncate">Page ${date.page} • ${date.context.substring(0, 50)}...</p>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function downloadModifiedPDF() {
+            if (!currentPDFBytes) return;
+            
+            try {
+                // Charger le PDF avec pdf-lib pour modification
+                const pdfDoc = await PDFLib.PDFDocument.load(currentPDFBytes);
+                const pages = pdfDoc.getPages();
+                
+                // Pour chaque date modifiée, on ajoute un overlay blanc puis le nouveau texte
+                for (const date of detectedDates) {
+                    if (!date.modified) continue;
+                    
+                    const page = pages[date.page - 1];
+                    const { width, height } = page.getSize();
+                    
+                    // Dessiner un rectangle blanc pour cacher l'ancienne date
+                    page.drawRectangle({
+                        x: date.x,
+                        y: height - date.y - date.height,
+                        width: date.width,
+                        height: date.height,
+                        color: PDFLib.rgb(1, 1, 1),
+                    });
+                    
+                    // Ajouter la nouvelle date
+                    page.drawText(date.newValue, {
+                        x: date.x,
+                        y: height - date.y - (date.height / 2),
+                        size: 10,
+                        color: PDFLib.rgb(0, 0, 0),
+                    });
+                }
+                
+                // Sauvegarder et télécharger
+                const modifiedBytes = await pdfDoc.save();
+                const blob = new Blob([modifiedBytes], { type: 'application/pdf' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'document-modifie-' + new Date().toISOString().split('T')[0] + '.pdf';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+            } catch (error) {
+                console.error('Erreur lors de la modification du PDF:', error);
+                
+                // Fallback: créer un PDF avec html2canvas
+                alert('Génération du PDF modifié via capture d\'écran...');
+                await downloadAsImage();
+            }
+        }
+
+        async function downloadAsImage() {
+            const element = document.getElementById('pdf-pages');
+            const canvas = await html2canvas(element, {
+                scale: 2,
+                useCORS: true,
+                logging: false
+            });
+            
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const imgProps = pdf.getImageProperties(imgData);
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+            
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            pdf.save('document-modifie.pdf');
+        }
+
+        // Zoom controls
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === '+') {
+                e.preventDefault();
+                scale += 0.1;
+                renderPDF();
+            } else if (e.ctrlKey && e.key === '-') {
+                e.preventDefault();
+                scale = Math.max(0.5, scale - 0.1);
+                renderPDF();
+            }
+        });
     </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </body>
 </html>
