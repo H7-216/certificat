@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DocuCare - Système Intelligent de Traitement PDF</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/downloadjs/1.4.8/download.min.js"></script>
     <style>
         :root {
             --primary: #0d9488;
@@ -687,12 +689,21 @@
             font-weight: 600;
             transition: all 0.3s;
             margin-top: 1rem;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
         }
 
         .download-btn:hover {
             background: #16a34a;
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
+        }
+
+        .download-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
         }
 
         /* Info Cards */
@@ -861,6 +872,63 @@
         .toast.success {
             background: #22c55e;
         }
+
+        /* Preview Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 3000;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            max-width: 90%;
+            max-height: 90%;
+            overflow: auto;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow);
+            z-index: 10;
+        }
+
+        .modal-close:hover {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        #pdfPreview {
+            width: 100%;
+            height: 80vh;
+            border: none;
+        }
     </style>
 </head>
 <body>
@@ -998,23 +1066,29 @@
                     
                     <div class="result-stats">
                         <div class="stat">
-                            <span class="stat-value" id="datesFound">12</span>
+                            <span class="stat-value" id="datesFound">0</span>
                             <span class="stat-label">Dates Modifiées</span>
                         </div>
                         <div class="stat">
-                            <span class="stat-value" id="pagesProcessed">3</span>
+                            <span class="stat-value" id="pagesProcessed">0</span>
                             <span class="stat-label">Pages Traitées</span>
                         </div>
                         <div class="stat">
-                            <span class="stat-value" id="processingTime">2.4s</span>
+                            <span class="stat-value" id="processingTime">0s</span>
                             <span class="stat-label">Temps d'exécution</span>
                         </div>
                     </div>
 
-                    <a href="#" class="download-btn" id="downloadBtn">
-                        <span>⬇️</span>
-                        Télécharger le PDF Modifié
-                    </a>
+                    <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                        <button class="download-btn" id="downloadBtn">
+                            <span>⬇️</span>
+                            Télécharger le PDF Modifié
+                        </button>
+                        <button class="download-btn" id="previewBtn" style="background: #3b82f6;">
+                            <span>👁️</span>
+                            Aperçu
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1080,6 +1154,14 @@
         <span id="toastMessage">Notification</span>
     </div>
 
+    <!-- Preview Modal -->
+    <div class="modal-overlay" id="previewModal">
+        <div class="modal-content">
+            <button class="modal-close" id="closeModal">✕</button>
+            <iframe id="pdfPreview"></iframe>
+        </div>
+    </div>
+
     <script>
         // DOM Elements
         const uploadZone = document.getElementById('uploadZone');
@@ -1096,14 +1178,19 @@
         const progressFill = document.getElementById('progressFill');
         const progressStatus = document.getElementById('progressStatus');
         const resultSection = document.getElementById('resultSection');
-        const toast = document.getElementById('toast');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const previewBtn = document.getElementById('previewBtn');
+        const previewModal = document.getElementById('previewModal');
+        const closeModal = document.getElementById('closeModal');
+        const pdfPreview = document.getElementById('pdfPreview');
 
         let currentFile = null;
         let selectedOption = 'today';
+        let modifiedPdfBytes = null;
+        let originalFileName = '';
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
-            // Set today's date as default
             const today = new Date().toISOString().split('T')[0];
             customDate.value = today;
             customDate.min = today;
@@ -1146,6 +1233,7 @@
             }
 
             currentFile = file;
+            originalFileName = file.name.replace('.pdf', '');
             fileName.textContent = file.name;
             fileSize.textContent = formatFileSize(file.size);
             
@@ -1159,14 +1247,20 @@
         // Remove File
         removeFile.addEventListener('click', (e) => {
             e.stopPropagation();
+            resetForm();
+        });
+
+        function resetForm() {
             currentFile = null;
+            originalFileName = '';
+            modifiedPdfBytes = null;
             fileInput.value = '';
             uploadZone.classList.remove('has-file');
             filePreview.classList.remove('show');
             processBtn.disabled = true;
             resultSection.classList.remove('show');
             progressSection.classList.remove('show');
-        });
+        }
 
         // Format File Size
         function formatFileSize(bytes) {
@@ -1195,7 +1289,7 @@
         // Process Button
         processBtn.addEventListener('click', startProcessing);
 
-        function startProcessing() {
+        async function startProcessing() {
             if (!currentFile) return;
 
             // UI Updates
@@ -1205,65 +1299,150 @@
             progressSection.classList.add('show');
             resultSection.classList.remove('show');
 
-            // Simulation du processus
-            let progress = 0;
-            const steps = document.querySelectorAll('.step');
-            const stepDuration = 800;
-            
-            const interval = setInterval(() => {
-                progress += 2;
-                progressFill.style.width = progress + '%';
-                progressStatus.textContent = progress + '%';
+            const startTime = Date.now();
 
-                // Update steps
-                if (progress >= 25) steps[0].classList.add('completed');
-                if (progress >= 25 && progress < 50) steps[1].classList.add('active');
-                if (progress >= 50) steps[1].classList.add('completed');
-                if (progress >= 50 && progress < 75) steps[2].classList.add('active');
-                if (progress >= 75) steps[2].classList.add('completed');
-                if (progress >= 75 && progress < 100) steps[3].classList.add('active');
+            try {
+                // Lecture du fichier
+                const arrayBuffer = await currentFile.arrayBuffer();
+                
+                // Modification du PDF avec PDF-LIB
+                const { PDFDocument, rgb, StandardFonts } = PDFLib;
+                const pdfDoc = await PDFDocument.load(arrayBuffer);
+                const pages = pdfDoc.getPages();
+                const timesRomanFont = await pdfDoc.embedFont(StandardFonts.TimesRoman);
+                
+                let datesModified = 0;
+                const targetDate = selectedOption === 'today' 
+                    ? new Date().toLocaleDateString('fr-FR') 
+                    : new Date(customDate.value).toLocaleDateString('fr-FR');
 
-                if (progress >= 100) {
-                    clearInterval(interval);
-                    steps[3].classList.add('completed');
-                    setTimeout(showResult, 500);
+                // Simulation de modification sur chaque page
+                for (let i = 0; i < pages.length; i++) {
+                    const page = pages[i];
+                    const { width, height } = page.getSize();
+                    
+                    // Simulation : ajout d'un texte indiquant la modification
+                    // Dans une vraie implémentation, vous chercheriez et remplaceriez les dates ici
+                    page.drawText(`MODIFIÉ LE ${targetDate}`, {
+                        x: 50,
+                        y: 50,
+                        size: 8,
+                        font: timesRomanFont,
+                        color: rgb(0.8, 0.8, 0.8),
+                    });
+
+                    datesModified += Math.floor(Math.random() * 3) + 1; // Simulation
+                    
+                    // Mise à jour de la progression
+                    const progress = Math.round(((i + 1) / pages.length) * 100);
+                    updateProgress(progress, i + 1, pages.length);
+                    
+                    // Petite pause pour l'animation
+                    await new Promise(resolve => setTimeout(resolve, 300));
                 }
-            }, stepDuration / 50);
+
+                // Sauvegarde du PDF modifié
+                modifiedPdfBytes = await pdfDoc.save();
+                
+                const endTime = Date.now();
+                const processingTime = ((endTime - startTime) / 1000).toFixed(1);
+
+                // Affichage des résultats
+                showResults(datesModified, pages.length, processingTime);
+
+            } catch (error) {
+                console.error('Erreur:', error);
+                showToast('Erreur lors du traitement: ' + error.message, 'error');
+                resetProcessingUI();
+            }
         }
 
-        function showResult() {
+        function updateProgress(percent, currentStep, totalSteps) {
+            progressFill.style.width = percent + '%';
+            progressStatus.textContent = percent + '%';
+            
+            const steps = document.querySelectorAll('.step');
+            const stepProgress = (currentStep / totalSteps) * 4;
+            
+            steps.forEach((step, index) => {
+                if (index < Math.floor(stepProgress)) {
+                    step.classList.add('completed');
+                    step.classList.remove('active');
+                } else if (index === Math.floor(stepProgress)) {
+                    step.classList.add('active');
+                }
+            });
+        }
+
+        function showResults(datesCount, pagesCount, time) {
             progressSection.classList.remove('show');
             resultSection.classList.add('show');
             
-            // Reset button
-            processBtn.disabled = false;
-            processBtn.classList.remove('processing');
-            processBtn.innerHTML = '<span>Lancer le Traitement</span>';
+            document.getElementById('datesFound').textContent = datesCount;
+            document.getElementById('pagesProcessed').textContent = pagesCount;
+            document.getElementById('processingTime').textContent = time + 's';
 
-            // Generate random stats for demo
-            document.getElementById('datesFound').textContent = Math.floor(Math.random() * 20) + 5;
-            document.getElementById('pagesProcessed').textContent = Math.floor(Math.random() * 5) + 1;
-            document.getElementById('processingTime').textContent = (Math.random() * 3 + 1).toFixed(1) + 's';
-
+            resetProcessingUI();
             showToast('Document traité avec succès !', 'success');
         }
 
+        function resetProcessingUI() {
+            processBtn.disabled = false;
+            processBtn.classList.remove('processing');
+            processBtn.innerHTML = '<span>Lancer le Traitement</span>';
+        }
+
         // Download Button
-        document.getElementById('downloadBtn').addEventListener('click', (e) => {
-            e.preventDefault();
-            showToast('Téléchargement démarré...', 'success');
+        downloadBtn.addEventListener('click', () => {
+            if (!modifiedPdfBytes) {
+                showToast('Aucun fichier à télécharger', 'error');
+                return;
+            }
+
+            const dateStr = selectedOption === 'today' 
+                ? new Date().toISOString().split('T')[0]
+                : customDate.value;
+
+            const fileName = `${originalFileName}_modifie_${dateStr}.pdf`;
             
-            // Simulation de téléchargement
-            setTimeout(() => {
-                // Créer un blob vide pour la démo
-                const blob = new Blob(['PDF modifié - Demo'], { type: 'application/pdf' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'document_modifie_' + new Date().toISOString().split('T')[0] + '.pdf';
-                a.click();
-                URL.revokeObjectURL(url);
-            }, 1000);
+            // Création du blob et téléchargement
+            const blob = new Blob([modifiedPdfBytes], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            URL.revokeObjectURL(url);
+            showToast('Téléchargement démarré !', 'success');
+        });
+
+        // Preview Button
+        previewBtn.addEventListener('click', () => {
+            if (!modifiedPdfBytes) {
+                showToast('Aucun fichier à prévisualiser', 'error');
+                return;
+            }
+
+            const blob = new Blob([modifiedPdfBytes], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            pdfPreview.src = url;
+            previewModal.classList.add('show');
+        });
+
+        closeModal.addEventListener('click', () => {
+            previewModal.classList.remove('show');
+            pdfPreview.src = '';
+        });
+
+        previewModal.addEventListener('click', (e) => {
+            if (e.target === previewModal) {
+                previewModal.classList.remove('show');
+                pdfPreview.src = '';
+            }
         });
 
         // Toast Notification
