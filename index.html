@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Éditeur PDF Intelligent - Modifier le texte</title>
-    <!-- Polices Google Fonts pour l'aperçu -->
+    <title>Éditeur PDF Intelligent - Version Améliorée</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&display=swap" rel="stylesheet">
     <style>
         * {
@@ -132,6 +131,7 @@
             border-radius: 12px;
             margin-bottom: 16px;
             display: inline-block;
+            cursor: pointer;
         }
 
         .text-item {
@@ -220,7 +220,7 @@
 <body>
 <div class="container">
     <h1>✍️ Éditeur PDF Intelligent</h1>
-    <div class="sub">Détecte toutes les zones texte — modifie couleur, police, taille, contenu — sans casser le fichier</div>
+    <div class="sub">Détecte toutes les zones texte — modifie couleur, police, taille, contenu — sans casser le fichier (version améliorée)</div>
 
     <div class="upload-area" id="uploadArea">
         <div class="upload-icon">📄📤</div>
@@ -238,7 +238,7 @@
             <div class="text-list" id="textList"></div>
             <div class="preview-canvas" id="previewArea">
                 <canvas id="previewCanvas"></canvas>
-                <div style="margin-top: 8px; font-size: 0.8rem; color: #475569;">Aperçu de la page courante (cliquer sur un texte le sélectionne)</div>
+                <div style="margin-top: 8px; font-size: 0.8rem; color: #475569;">Aperçu de la page courante (cliquer sur un titre de page ou un texte le sélectionne)</div>
             </div>
         </div>
     </div>
@@ -248,14 +248,14 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 <script>
-    // Configuration de PDF.js pour le worker
+    // Configuration de PDF.js
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
-    let pdfDoc = null;          // Document PDF original (PDF.js)
-    let pagesData = [];         // { pageNum, items: [{ content, x, y, width, height, fontName, fontSize, color, userSettings }] }
+    let pdfDoc = null;
+    let pagesData = [];         // { pageNum, width, height, items: [{ content, originalContent, x, y, width, height, fontName, fontSize, color, userSettings }] }
     let currentPage = 1;
     let totalPages = 0;
-    let originalPdfBytes = null; // Pour pdf-lib
+    let originalPdfBytes = null;
 
     // Éléments DOM
     const fileInput = document.getElementById('fileInput');
@@ -267,83 +267,149 @@
     const resetBtn = document.getElementById('resetBtn');
     const previewCanvas = document.getElementById('previewCanvas');
 
-    // Charger un PDF
+    // ---------- Extraction robuste avec regroupement des fragments ----------
     async function loadPDF(file) {
         const arrayBuffer = await file.arrayBuffer();
         originalPdfBytes = new Uint8Array(arrayBuffer);
         
-        // Charger avec PDF.js pour extraire les textes
         const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
         pdfDoc = await loadingTask.promise;
         totalPages = pdfDoc.numPages;
         
         pagesData = [];
         
-        // Extraire les textes de chaque page
         for (let i = 1; i <= totalPages; i++) {
             const page = await pdfDoc.getPage(i);
             const textContent = await page.getTextContent();
-            const viewport = page.getViewport({ scale: 1.0 }); // pour avoir les dimensions en points
+            const viewport = page.getViewport({ scale: 1.0 });
             
-            const items = [];
-            
+            // Collecter tous les fragments
+            const fragments = [];
             for (let item of textContent.items) {
                 if (!item.str || item.str.trim() === '') continue;
-                
-                // Transformation: la matrice donne position et dimensions
                 const transform = item.transform;
                 const x = transform[4];
-                const y = viewport.height - transform[5]; // PDF.js utilise y depuis le bas, on convertit pour affichage canvas
+                const y = transform[5];
                 const width = Math.sqrt(transform[0] ** 2 + transform[2] ** 2);
                 const height = Math.sqrt(transform[1] ** 2 + transform[3] ** 2);
-                
-                // Estimation taille police approximative
                 let fontSize = 12;
                 if (item.height) fontSize = item.height;
                 else if (height > 0) fontSize = height;
                 
-                items.push({
+                fragments.push({
                     content: item.str,
-                    originalContent: item.str,
-                    x: transform[4],           // coordonnée bas‑gauche en points
-                    y: transform[5],           // bas‑gauche (système PDF)
+                    x: x,
+                    y: y,
                     width: width,
                     height: height,
-                    fontName: item.fontName || 'Helvetica',
                     fontSize: fontSize,
-                    color: '#000000',
-                    userSettings: {
-                        content: item.str,
-                        color: '#000000',
-                        fontFamily: 'Helvetica',
-                        fontSize: fontSize
-                    }
+                    fontName: item.fontName || 'Helvetica',
+                    transform: transform
                 });
             }
+            
+            // Regrouper les fragments sur la même ligne (tolérance 5 pts en Y)
+            const lines = [];
+            fragments.sort((a, b) => a.y - b.y);
+            for (let frag of fragments) {
+                let added = false;
+                for (let line of lines) {
+                    if (Math.abs(line.y - frag.y) < 5) {
+                        line.items.push(frag);
+                        added = true;
+                        break;
+                    }
+                }
+                if (!added) {
+                    lines.push({ y: frag.y, items: [frag] });
+                }
+            }
+            
+            // Pour chaque ligne, trier par X et fusionner
+            const mergedItems = [];
+            for (let line of lines) {
+                line.items.sort((a, b) => a.x - b.x);
+                let currentBlock = null;
+                for (let frag of line.items) {
+                    if (!currentBlock) {
+                        currentBlock = {
+                            items: [frag],
+                            content: frag.content,
+                            x: frag.x,
+                            y: frag.y,
+                            width: frag.width,
+                            height: frag.height,
+                            fontSize: frag.fontSize,
+                            fontName: frag.fontName
+                        };
+                    } else {
+                        // Fusion si l'écart horizontal est faible (moins de 10 pts)
+                        const lastX = currentBlock.x + currentBlock.width;
+                        if (frag.x - lastX < 10) {
+                            currentBlock.items.push(frag);
+                            currentBlock.content += frag.content;
+                            currentBlock.width = (frag.x + frag.width) - currentBlock.x;
+                            currentBlock.height = Math.max(currentBlock.height, frag.height);
+                            currentBlock.fontSize = currentBlock.items[0].fontSize; // on garde la première taille
+                        } else {
+                            mergedItems.push(currentBlock);
+                            currentBlock = {
+                                items: [frag],
+                                content: frag.content,
+                                x: frag.x,
+                                y: frag.y,
+                                width: frag.width,
+                                height: frag.height,
+                                fontSize: frag.fontSize,
+                                fontName: frag.fontName
+                            };
+                        }
+                    }
+                }
+                if (currentBlock) mergedItems.push(currentBlock);
+            }
+            
+            // Convertir en items avec userSettings
+            const finalItems = mergedItems.map(item => ({
+                content: item.content,
+                originalContent: item.content,
+                x: item.x,
+                y: item.y,
+                width: item.width,
+                height: item.height,
+                fontName: item.fontName,
+                fontSize: item.fontSize,
+                color: '#000000',
+                userSettings: {
+                    content: item.content,
+                    color: '#000000',
+                    fontFamily: 'Helvetica',
+                    fontSize: item.fontSize
+                }
+            }));
             
             pagesData.push({
                 pageNum: i,
                 width: viewport.width,
                 height: viewport.height,
-                items: items
+                items: finalItems
             });
         }
         
-        // Afficher l'interface d'édition
         renderTextList();
         renderPreview(currentPage);
         toolbar.style.display = 'flex';
         editorContainer.style.display = 'block';
     }
     
-    // Afficher la liste modifiable des textes (par page)
+    // ---------- Affichage de la liste modifiable ----------
     function renderTextList() {
         textListDiv.innerHTML = '';
         
         for (let page of pagesData) {
             const pageDiv = document.createElement('div');
             pageDiv.className = 'page-group';
-            pageDiv.innerHTML = `<div class="page-title">📄 Page ${page.pageNum}</div>`;
+            pageDiv.innerHTML = `<div class="page-title" data-page="${page.pageNum}">📄 Page ${page.pageNum}</div>`;
             
             page.items.forEach((item, idx) => {
                 const itemDiv = document.createElement('div');
@@ -365,7 +431,6 @@
                 const styleRow = document.createElement('div');
                 styleRow.className = 'style-row';
                 
-                // Sélecteur police (standard PDF-lib)
                 const fontSelect = document.createElement('select');
                 fontSelect.innerHTML = `
                     <option value="Helvetica">Helvetica</option>
@@ -380,7 +445,6 @@
                     updatePreviewForItem(page.pageNum, idx);
                 });
                 
-                // Taille police
                 const sizeInput = document.createElement('input');
                 sizeInput.type = 'number';
                 sizeInput.min = 6;
@@ -393,7 +457,6 @@
                     updatePreviewForItem(page.pageNum, idx);
                 });
                 
-                // Couleur
                 const colorInput = document.createElement('input');
                 colorInput.type = 'color';
                 colorInput.value = item.userSettings.color;
@@ -416,7 +479,7 @@
                 itemDiv.appendChild(document.createElement('label')).innerText = 'Style';
                 itemDiv.appendChild(styleRow);
                 
-                // Au clic sur l'item, on centre l'aperçu (optionnel)
+                // Au clic sur l'item, on change la page courante pour l'aperçu
                 itemDiv.addEventListener('click', (e) => {
                     if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'SELECT') {
                         currentPage = page.pageNum;
@@ -429,63 +492,63 @@
             
             textListDiv.appendChild(pageDiv);
         }
+        
+        // Clic sur titre de page pour changer l'aperçu
+        document.querySelectorAll('.page-title').forEach(title => {
+            title.addEventListener('click', () => {
+                const pageNum = parseInt(title.dataset.page);
+                if (!isNaN(pageNum)) {
+                    currentPage = pageNum;
+                    renderPreview(currentPage);
+                }
+            });
+        });
     }
     
-    // Mettre à jour l'aperçu canvas pour un item spécifique (rafraîchir toute la page)
     async function updatePreviewForItem(pageNum, itemIdx) {
         if (currentPage === pageNum) {
             renderPreview(currentPage);
         }
     }
     
-    // Afficher l'aperçu d'une page avec surlignage modifiable (canvas temporaire)
+    // ---------- Aperçu amélioré ----------
     async function renderPreview(pageNum) {
         const pageData = pagesData.find(p => p.pageNum === pageNum);
         if (!pageData) return;
         
         const page = await pdfDoc.getPage(pageNum);
-        const viewport = page.getViewport({ scale: 1.5 }); // facteur pour un aperçu confortable
+        const viewport = page.getViewport({ scale: 1.5 });
         previewCanvas.width = viewport.width;
         previewCanvas.height = viewport.height;
         const ctx = previewCanvas.getContext('2d');
         
-        // Rendu du fond PDF
         const renderContext = {
             canvasContext: ctx,
             viewport: viewport,
         };
         await page.render(renderContext).promise;
         
-        // Dessiner par dessus les textes modifiés (simulation avec canvas)
-        // Attention: c'est seulement un aperçu, pas le PDF final.
-        // On utilise les coordonnées transformées pour le viewport
         const scaleFactor = viewport.scale;
         
         for (let item of pageData.items) {
             const user = item.userSettings;
             if (!user.content || user.content.trim() === '') continue;
             
-            // Convertir les coordonnées PDF (bas-gauche) en canvas (haut-gauche)
-            const xPdf = item.x;
-            const yPdf = item.y;
-            // Le viewport transforme les points PDF en pixels canvas
-            const [canvasX, canvasY] = viewport.convertToViewportPoint(xPdf, yPdf);
-            // La hauteur estimée en pixels
+            // Conversion des coordonnées PDF (bas-gauche) en canvas (haut-gauche)
+            const [canvasX, canvasY] = viewport.convertToViewportPoint(item.x, item.y);
             const fontSizePx = user.fontSize * scaleFactor;
             
             ctx.save();
             ctx.font = `${fontSizePx}px "${user.fontFamily}", Helvetica, Arial`;
             ctx.fillStyle = user.color;
-            ctx.shadowBlur = 0;
-            // On efface un petit rectangle pour masquer l'original (simulation)
-            // Pour l'aperçu on ne fait que surligner
-            ctx.fillStyle = user.color;
-            ctx.fillText(user.content, canvasX, canvasY - fontSizePx * 0.2);
+            // La baseline approximative pour un affichage correct
+            const baselineCanvasY = canvasY - (item.height * scaleFactor) * 0.25;
+            ctx.fillText(user.content, canvasX, baselineCanvasY);
             ctx.restore();
         }
     }
     
-    // Générer le PDF final avec pdf-lib en remplaçant chaque texte par une version modifiée
+    // ---------- Régénération précise avec pdf-lib ----------
     async function generateModifiedPDF() {
         if (!originalPdfBytes) return;
         
@@ -495,20 +558,19 @@
         for (let pageData of pagesData) {
             const pageIndex = pageData.pageNum - 1;
             const page = pdfDocLib.getPage(pageIndex);
-            const { width, height } = page.getSize();
             
-            // Pour chaque zone texte, on recouvre l'ancien texte par un rectangle blanc puis on écrit le nouveau
             for (let item of pageData.items) {
                 const user = item.userSettings;
                 if (!user.content || user.content.trim() === '') continue;
                 
-                // Dimensions du rectangle à effacer
-                const rectW = item.width;
-                const rectH = item.height;
-                const rectX = item.x;
-                const rectY = item.y; // bas-gauche
+                // Marge de 2 points pour masquer complètement l'ancien texte
+                const margin = 2;
+                const rectW = item.width + margin * 2;
+                const rectH = item.height + margin * 2;
+                const rectX = item.x - margin;
+                const rectY = item.y - margin;
                 
-                // Dessiner un rectangle blanc pour masquer l'ancien texte
+                // Rectangle blanc
                 page.drawRectangle({
                     x: rectX,
                     y: rectY,
@@ -519,14 +581,16 @@
                     opacity: 1,
                 });
                 
-                // Sélection de la police (standard pdf-lib)
+                // Sélection de la police
                 let font;
                 const fontName = user.fontFamily;
-                if (fontName === 'Helvetica') font = await pdfDocLib.embedFont(pdfLib.StandardFonts.Helvetica);
-                else if (fontName === 'Helvetica-Bold') font = await pdfDocLib.embedFont(pdfLib.StandardFonts.HelveticaBold);
-                else if (fontName === 'TimesRoman') font = await pdfDocLib.embedFont(pdfLib.StandardFonts.TimesRoman);
-                else if (fontName === 'Courier') font = await pdfDocLib.embedFont(pdfLib.StandardFonts.Courier);
-                else font = await pdfDocLib.embedFont(pdfLib.StandardFonts.Helvetica);
+                switch(fontName) {
+                    case 'Helvetica': font = await pdfDocLib.embedFont(pdfLib.StandardFonts.Helvetica); break;
+                    case 'Helvetica-Bold': font = await pdfDocLib.embedFont(pdfLib.StandardFonts.HelveticaBold); break;
+                    case 'TimesRoman': font = await pdfDocLib.embedFont(pdfLib.StandardFonts.TimesRoman); break;
+                    case 'Courier': font = await pdfDocLib.embedFont(pdfLib.StandardFonts.Courier); break;
+                    default: font = await pdfDocLib.embedFont(pdfLib.StandardFonts.Helvetica);
+                }
                 
                 // Couleur
                 const hex = user.color;
@@ -534,9 +598,12 @@
                 const g = parseInt(hex.slice(3,5), 16)/255;
                 const b = parseInt(hex.slice(5,7), 16)/255;
                 
+                // Positionnement vertical : on place le texte sur la baseline estimée
+                const baselineY = item.y + item.height * 0.75;
+                
                 page.drawText(user.content, {
-                    x: rectX,
-                    y: rectY + item.height * 0.2, // léger ajustement vertical
+                    x: item.x,
+                    y: baselineY,
                     size: user.fontSize,
                     font: font,
                     color: pdfLib.rgb(r, g, b),
@@ -545,7 +612,6 @@
         }
         
         const pdfBytes = await pdfDocLib.save();
-        // Téléchargement
         const blob = new Blob([pdfBytes], { type: 'application/pdf' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
@@ -554,7 +620,7 @@
         URL.revokeObjectURL(link.href);
     }
     
-    // Réinitialiser toutes les modifications d'une page / de tout
+    // ---------- Réinitialisation ----------
     function resetEdits() {
         for (let page of pagesData) {
             for (let item of page.items) {
@@ -570,7 +636,7 @@
         renderPreview(currentPage);
     }
     
-    // Gestionnaire upload
+    // ---------- Gestionnaires d'upload ----------
     uploadArea.addEventListener('click', () => fileInput.click());
     uploadArea.addEventListener('dragover', (e) => {
         e.preventDefault();
@@ -597,21 +663,6 @@
     
     generateBtn.addEventListener('click', generateModifiedPDF);
     resetBtn.addEventListener('click', resetEdits);
-    
-    // Sélection page par clic sur le groupe (simplifié)
-    textListDiv.addEventListener('click', (e) => {
-        const pageDiv = e.target.closest('.page-group');
-        if (pageDiv) {
-            const titleDiv = pageDiv.querySelector('.page-title');
-            if (titleDiv) {
-                const pageNum = parseInt(titleDiv.innerText.match(/\d+/)[0]);
-                if (!isNaN(pageNum)) {
-                    currentPage = pageNum;
-                    renderPreview(currentPage);
-                }
-            }
-        }
-    });
 </script>
 </body>
 </html>
