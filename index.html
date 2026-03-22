@@ -246,7 +246,7 @@
             </div>
         </div>
     </div>
-    <footer>🛡️ Tout est local — augmentez la marge si des résidus d'ancien texte persistent.</footer>
+    <footer>🛡️ Tout est local — police Unicode chargée depuis un CDN fiable. En cas d'échec, Helvetica sera utilisée.</footer>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
@@ -260,6 +260,7 @@
     let totalPages = 0;
     let originalPdfBytes = null;
     let customFontBytes = null;
+    let fontLoaded = false;
 
     const fileInput = document.getElementById('fileInput');
     const uploadArea = document.getElementById('uploadArea');
@@ -271,38 +272,38 @@
     const previewCanvas = document.getElementById('previewCanvas');
     const maskMarginInput = document.getElementById('maskMargin');
 
-    // ---------- Police Unicode ----------
+    // ---------- Police Unicode (Roboto) depuis un CDN fiable ----------
     async function loadCustomFont() {
         if (customFontBytes) return customFontBytes;
         try {
-            const fontUrl = 'https://github.com/googlefonts/roboto/raw/main/src/hinted/Roboto-Regular.ttf?raw=true';
+            // Utiliser un CDN fiable (jsdelivr) pour la police Roboto Regular
+            const fontUrl = 'https://cdn.jsdelivr.net/npm/roboto-font@0.1.0/fonts/Roboto/roboto-regular-webfont.ttf';
             const response = await fetch(fontUrl);
-            if (!response.ok) throw new Error('Impossible de charger la police Roboto');
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const buffer = await response.arrayBuffer();
             customFontBytes = new Uint8Array(buffer);
-            console.log('Police Roboto chargée');
+            fontLoaded = true;
+            console.log('Police Roboto chargée avec succès');
             return customFontBytes;
         } catch (error) {
-            console.error(error);
-            alert("Le chargement de la police UTF-16 a échoué. Vérifiez votre connexion internet.");
+            console.error('Échec chargement police Roboto:', error);
+            fontLoaded = false;
+            alert("La police Unicode n'a pas pu être chargée. Le texte sera écrit en Helvetica. Les caractères spéciaux risquent d'être mal encodés.");
             return null;
         }
     }
 
     // ---------- Fusion agressive des blocs qui se chevauchent ----------
     function mergeOverlappingItems(items) {
-        // On trie par Y croissant puis X croissant
         const sorted = [...items].sort((a, b) => a.y - b.y || a.x - b.x);
         const merged = [];
 
         for (let item of sorted) {
             let foundOverlap = false;
             for (let existing of merged) {
-                // Calcul de l'intersection
                 const overlapX = !(item.x + item.width < existing.x || existing.x + existing.width < item.x);
                 const overlapY = !(item.y + item.height < existing.y || existing.y + existing.height < item.y);
                 if (overlapX && overlapY) {
-                    // Fusionner
                     const newX = Math.min(existing.x, item.x);
                     const newY = Math.min(existing.y, item.y);
                     const newWidth = Math.max(existing.x + existing.width, item.x + item.width) - newX;
@@ -311,7 +312,6 @@
                     existing.y = newY;
                     existing.width = newWidth;
                     existing.height = newHeight;
-                    // Fusion du contenu (si les textes sont différents)
                     if (!existing.content.includes(item.content)) {
                         existing.content += ' ' + item.content;
                     }
@@ -322,7 +322,7 @@
                 }
             }
             if (!foundOverlap) {
-                merged.push({ ...item }); // copie profonde simplifiée
+                merged.push({ ...item });
             }
         }
         return merged;
@@ -367,7 +367,6 @@
                 });
             }
 
-            // Regrouper par ligne (tolérance 5 points en Y)
             const lines = [];
             fragments.sort((a, b) => a.y - b.y);
             for (let frag of fragments) {
@@ -384,7 +383,6 @@
                 }
             }
 
-            // Fusionner les fragments d'une même ligne (écart X < 10)
             const mergedItems = [];
             for (let line of lines) {
                 line.items.sort((a, b) => a.x - b.x);
@@ -423,7 +421,6 @@
                 if (currentBlock) mergedItems.push(currentBlock);
             }
 
-            // Fusionner les blocs qui se chevauchent (élimine duplicatas)
             const finalItems = mergeOverlappingItems(mergedItems).map(item => ({
                 content: item.content,
                 originalContent: item.content,
@@ -604,22 +601,20 @@
             const PDFLib = window.PDFLib;
             if (!PDFLib) throw new Error("pdf-lib non chargé");
 
+            // Charger la police Unicode si elle n'est pas déjà chargée
             const fontBytes = await loadCustomFont();
-            if (!fontBytes) {
-                alert("Police Unicode non disponible. La génération risque d'échouer.");
-                return;
+            let customFont = null;
+            if (fontBytes) {
+                customFont = await pdfDocLib.embedFont(fontBytes);
             }
 
             const pdfDocLib = await PDFLib.PDFDocument.load(originalPdfBytes);
-            const customFont = await pdfDocLib.embedFont(fontBytes);
-
             const maskMargin = parseFloat(maskMarginInput.value) || 5;
 
             for (let pageData of pagesData) {
                 const pageIndex = pageData.pageNum - 1;
                 const page = pdfDocLib.getPage(pageIndex);
 
-                // On traite les blocs du bas vers le haut pour éviter les interférences
                 const sortedItems = [...pageData.items].sort((a, b) => a.y - b.y);
 
                 for (let item of sortedItems) {
@@ -633,7 +628,6 @@
                     const rectX = item.x - maskMargin;
                     const rectY = item.y - maskMargin;
 
-                    // Dessiner rectangle blanc (sans bordure visible)
                     page.drawRectangle({
                         x: rectX,
                         y: rectY,
@@ -647,7 +641,7 @@
 
                     // Choix de la police
                     let fontToUse;
-                    if (user.fontFamily === 'Unicode') {
+                    if (user.fontFamily === 'Unicode' && customFont) {
                         fontToUse = customFont;
                     } else {
                         switch(user.fontFamily) {
@@ -663,7 +657,6 @@
                     const g = parseInt(hex.slice(3,5), 16)/255;
                     const b = parseInt(hex.slice(5,7), 16)/255;
 
-                    // Baseline estimée (ajustée pour un meilleur alignement)
                     const baselineY = item.y + item.height * 0.75;
 
                     page.drawText(rawContent, {
@@ -685,7 +678,7 @@
             URL.revokeObjectURL(link.href);
         } catch (error) {
             console.error(error);
-            alert("Erreur : " + error.message);
+            alert("Erreur lors de la génération : " + error.message);
         }
     }
 
@@ -733,6 +726,7 @@
     generateBtn.addEventListener('click', generateModifiedPDF);
     resetBtn.addEventListener('click', resetEdits);
 
+    // Précharger la police dès le début pour éviter une attente lors de la génération
     loadCustomFont();
 </script>
 </body>
