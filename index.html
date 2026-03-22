@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Éditeur PDF Intelligent - Propre</title>
+    <title>Éditeur PDF Intelligent - Stable</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&display=swap" rel="stylesheet">
     <style>
         * {
@@ -246,7 +246,7 @@
             </div>
         </div>
     </div>
-    <footer>🛡️ Tout est local — police Unicode chargée depuis un CDN fiable. En cas d'échec, Helvetica sera utilisée.</footer>
+    <footer>🛡️ Tout est local — pas de police externe, encodage WinAnsi avec nettoyage des caractères spéciaux.</footer>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
@@ -259,8 +259,6 @@
     let currentPage = 1;
     let totalPages = 0;
     let originalPdfBytes = null;
-    let customFontBytes = null;
-    let fontLoaded = false;
 
     const fileInput = document.getElementById('fileInput');
     const uploadArea = document.getElementById('uploadArea');
@@ -272,28 +270,22 @@
     const previewCanvas = document.getElementById('previewCanvas');
     const maskMarginInput = document.getElementById('maskMargin');
 
-    // ---------- Police Unicode (Roboto) depuis un CDN fiable ----------
-    async function loadCustomFont() {
-        if (customFontBytes) return customFontBytes;
-        try {
-            // Utiliser un CDN fiable (jsdelivr) pour la police Roboto Regular
-            const fontUrl = 'https://cdn.jsdelivr.net/npm/roboto-font@0.1.0/fonts/Roboto/roboto-regular-webfont.ttf';
-            const response = await fetch(fontUrl);
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const buffer = await response.arrayBuffer();
-            customFontBytes = new Uint8Array(buffer);
-            fontLoaded = true;
-            console.log('Police Roboto chargée avec succès');
-            return customFontBytes;
-        } catch (error) {
-            console.error('Échec chargement police Roboto:', error);
-            fontLoaded = false;
-            alert("La police Unicode n'a pas pu être chargée. Le texte sera écrit en Helvetica. Les caractères spéciaux risquent d'être mal encodés.");
-            return null;
+    // Nettoyage des caractères non compatibles avec WinAnsi (ISO-8859-1)
+    function sanitizeForWinAnsi(text) {
+        let cleaned = '';
+        for (let i = 0; i < text.length; i++) {
+            const code = text.charCodeAt(i);
+            // Plages acceptables : espace (0x20), 0x21-0x7E (ASCII imprimable), 0xA0-0xFF (Latin1 étendu)
+            if (code === 0x20 || (code >= 0x21 && code <= 0x7E) || (code >= 0xA0 && code <= 0xFF)) {
+                cleaned += text[i];
+            } else {
+                cleaned += ' '; // remplacer par un espace
+            }
         }
+        return cleaned;
     }
 
-    // ---------- Fusion agressive des blocs qui se chevauchent ----------
+    // Fusion des blocs qui se chevauchent
     function mergeOverlappingItems(items) {
         const sorted = [...items].sort((a, b) => a.y - b.y || a.x - b.x);
         const merged = [];
@@ -328,7 +320,7 @@
         return merged;
     }
 
-    // ---------- Extraction avec fusion des fragments et chevauchements ----------
+    // Extraction des textes
     async function loadPDF(file) {
         const arrayBuffer = await file.arrayBuffer();
         originalPdfBytes = new Uint8Array(arrayBuffer);
@@ -367,6 +359,7 @@
                 });
             }
 
+            // Regrouper par ligne
             const lines = [];
             fragments.sort((a, b) => a.y - b.y);
             for (let frag of fragments) {
@@ -383,6 +376,7 @@
                 }
             }
 
+            // Fusionner les fragments d'une même ligne
             const mergedItems = [];
             for (let line of lines) {
                 line.items.sort((a, b) => a.x - b.x);
@@ -421,6 +415,7 @@
                 if (currentBlock) mergedItems.push(currentBlock);
             }
 
+            // Fusionner les blocs qui se chevauchent
             const finalItems = mergeOverlappingItems(mergedItems).map(item => ({
                 content: item.content,
                 originalContent: item.content,
@@ -434,7 +429,7 @@
                 userSettings: {
                     content: item.content,
                     color: '#000000',
-                    fontFamily: 'Unicode',
+                    fontFamily: 'Helvetica',
                     fontSize: item.fontSize
                 }
             }));
@@ -481,10 +476,11 @@
 
                 const fontSelect = document.createElement('select');
                 fontSelect.innerHTML = `
-                    <option value="Unicode">Unicode (UTF-16, Roboto)</option>
-                    <option value="Helvetica">Helvetica (Latin1)</option>
+                    <option value="Helvetica">Helvetica</option>
                     <option value="TimesRoman">Times Roman</option>
                     <option value="Courier">Courier</option>
+                    <option value="Helvetica-Bold">Helvetica Bold</option>
+                    <option value="Helvetica-Oblique">Helvetica Oblique</option>
                 `;
                 fontSelect.value = item.userSettings.fontFamily;
                 fontSelect.addEventListener('change', (e) => {
@@ -582,7 +578,7 @@
             const fontSizePx = user.fontSize * scaleFactor;
 
             ctx.save();
-            ctx.font = `${fontSizePx}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", "Roboto", sans-serif`;
+            ctx.font = `${fontSizePx}px "${user.fontFamily}", Helvetica, Arial`;
             ctx.fillStyle = user.color;
             const baselineCanvasY = canvasY - (item.height * scaleFactor) * 0.25;
             ctx.fillText(user.content, canvasX, baselineCanvasY);
@@ -590,7 +586,6 @@
         }
     }
 
-    // ---------- Génération avec masquage large ----------
     async function generateModifiedPDF() {
         if (!originalPdfBytes) {
             alert("Aucun PDF chargé.");
@@ -600,13 +595,6 @@
         try {
             const PDFLib = window.PDFLib;
             if (!PDFLib) throw new Error("pdf-lib non chargé");
-
-            // Charger la police Unicode si elle n'est pas déjà chargée
-            const fontBytes = await loadCustomFont();
-            let customFont = null;
-            if (fontBytes) {
-                customFont = await pdfDocLib.embedFont(fontBytes);
-            }
 
             const pdfDocLib = await PDFLib.PDFDocument.load(originalPdfBytes);
             const maskMargin = parseFloat(maskMarginInput.value) || 5;
@@ -622,7 +610,11 @@
                     let rawContent = user.content || '';
                     if (rawContent.trim() === '') continue;
 
-                    // Rectangle de masquage avec marge large
+                    // Nettoyer le texte pour l'encodage WinAnsi
+                    const cleanedContent = sanitizeForWinAnsi(rawContent);
+                    if (cleanedContent.trim() === '') continue;
+
+                    // Rectangle de masquage
                     const rectW = item.width + maskMargin * 2;
                     const rectH = item.height + maskMargin * 2;
                     const rectX = item.x - maskMargin;
@@ -639,17 +631,15 @@
                         opacity: 1,
                     });
 
-                    // Choix de la police
-                    let fontToUse;
-                    if (user.fontFamily === 'Unicode' && customFont) {
-                        fontToUse = customFont;
-                    } else {
-                        switch(user.fontFamily) {
-                            case 'Helvetica': fontToUse = await pdfDocLib.embedFont(PDFLib.StandardFonts.Helvetica); break;
-                            case 'TimesRoman': fontToUse = await pdfDocLib.embedFont(PDFLib.StandardFonts.TimesRoman); break;
-                            case 'Courier': fontToUse = await pdfDocLib.embedFont(PDFLib.StandardFonts.Courier); break;
-                            default: fontToUse = await pdfDocLib.embedFont(PDFLib.StandardFonts.Helvetica);
-                        }
+                    // Police
+                    let font;
+                    const fontName = user.fontFamily;
+                    switch(fontName) {
+                        case 'Helvetica': font = await pdfDocLib.embedFont(PDFLib.StandardFonts.Helvetica); break;
+                        case 'Helvetica-Bold': font = await pdfDocLib.embedFont(PDFLib.StandardFonts.HelveticaBold); break;
+                        case 'TimesRoman': font = await pdfDocLib.embedFont(PDFLib.StandardFonts.TimesRoman); break;
+                        case 'Courier': font = await pdfDocLib.embedFont(PDFLib.StandardFonts.Courier); break;
+                        default: font = await pdfDocLib.embedFont(PDFLib.StandardFonts.Helvetica);
                     }
 
                     const hex = user.color;
@@ -659,11 +649,11 @@
 
                     const baselineY = item.y + item.height * 0.75;
 
-                    page.drawText(rawContent, {
+                    page.drawText(cleanedContent, {
                         x: item.x,
                         y: baselineY,
                         size: user.fontSize,
-                        font: fontToUse,
+                        font: font,
                         color: PDFLib.rgb(r, g, b),
                     });
                 }
@@ -689,7 +679,7 @@
                 item.userSettings = {
                     content: item.originalContent,
                     color: '#000000',
-                    fontFamily: 'Unicode',
+                    fontFamily: 'Helvetica',
                     fontSize: item.fontSize,
                 };
             }
@@ -725,9 +715,6 @@
 
     generateBtn.addEventListener('click', generateModifiedPDF);
     resetBtn.addEventListener('click', resetEdits);
-
-    // Précharger la police dès le début pour éviter une attente lors de la génération
-    loadCustomFont();
 </script>
 </body>
 </html>
