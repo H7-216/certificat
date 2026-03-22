@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Éditeur PDF Intelligent - Version Améliorée</title>
+    <title>Éditeur PDF Intelligent - Sans Duplicata</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&display=swap" rel="stylesheet">
     <style>
         * {
@@ -100,6 +100,23 @@
             align-items: center;
         }
 
+        .margin-control {
+            background: white;
+            padding: 6px 12px;
+            border-radius: 40px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+        }
+
+        .margin-control input {
+            width: 60px;
+            padding: 4px 8px;
+            border-radius: 20px;
+            border: 1px solid #cbd5e1;
+        }
+
         .editor-panel {
             display: flex;
             gap: 24px;
@@ -177,14 +194,6 @@
             background: white;
         }
 
-        .color-preview {
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            border: 1px solid #cbd5e1;
-            cursor: pointer;
-        }
-
         .preview-canvas {
             flex: 2;
             min-width: 400px;
@@ -202,13 +211,6 @@
             background: white;
         }
 
-        .loading {
-            text-align: center;
-            padding: 40px;
-            font-weight: 500;
-            color: #3b82f6;
-        }
-
         footer {
             margin-top: 32px;
             text-align: center;
@@ -219,8 +221,8 @@
 </head>
 <body>
 <div class="container">
-    <h1>✍️ Éditeur PDF Intelligent</h1>
-    <div class="sub">Détecte toutes les zones texte — modifie couleur, police, taille, contenu — sans casser le fichier (version améliorée)</div>
+    <h1>✍️ Éditeur PDF Intelligent (Propre)</h1>
+    <div class="sub">Détecte les textes — modifie sans duplicata — marge de masquage ajustable</div>
 
     <div class="upload-area" id="uploadArea">
         <div class="upload-icon">📄📤</div>
@@ -231,6 +233,11 @@
     <div class="toolbar" id="toolbar" style="display: none;">
         <button class="btn" id="generateBtn">✨ Générer le PDF modifié</button>
         <button class="btn btn-secondary" id="resetBtn">🔄 Réinitialiser</button>
+        <div class="margin-control">
+            <span>Marge masquage :</span>
+            <input type="number" id="maskMargin" value="3" step="0.5" min="0" max="10">
+            <span>pts</span>
+        </div>
     </div>
 
     <div id="editorContainer" style="display: none;">
@@ -242,20 +249,20 @@
             </div>
         </div>
     </div>
-    <footer>🛡️ Tout se passe localement — aucun fichier n'est envoyé vers un serveur.</footer>
+    <footer>🛡️ Tout est local — marge supplémentaire pour masquer l'ancien texte sans laisser de trace.</footer>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 <script>
-    // Configuration de PDF.js
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
     let pdfDoc = null;
-    let pagesData = [];
+    let pagesData = [];         // { pageNum, width, height, items: [...] }
     let currentPage = 1;
     let totalPages = 0;
     let originalPdfBytes = null;
+    let customFontBytes = null;
 
     const fileInput = document.getElementById('fileInput');
     const uploadArea = document.getElementById('uploadArea');
@@ -265,26 +272,63 @@
     const generateBtn = document.getElementById('generateBtn');
     const resetBtn = document.getElementById('resetBtn');
     const previewCanvas = document.getElementById('previewCanvas');
+    const maskMarginInput = document.getElementById('maskMargin');
 
-    // ---------- Fonction de nettoyage pour WinAnsi ----------
-    function sanitizeTextForWinAnsi(text) {
-        // WinAnsi = ISO-8859-1 (Latin1). On garde les caractères de 0x20 à 0xFF, plus quelques exceptions.
-        // On remplace les caractères non autorisés par un espace.
-        let cleaned = '';
-        for (let i = 0; i < text.length; i++) {
-            const code = text.charCodeAt(i);
-            // Plages acceptables : espace (0x20), 0x21-0x7E (ASCII imprimable), 0xA0-0xFF (Latin1 étendu)
-            if (code === 0x20 || (code >= 0x21 && code <= 0x7E) || (code >= 0xA0 && code <= 0xFF)) {
-                cleaned += text[i];
-            } else {
-                // Remplacer par un espace
-                cleaned += ' ';
-            }
+    // ---------- Charger police Unicode ----------
+    async function loadCustomFont() {
+        if (customFontBytes) return customFontBytes;
+        try {
+            const fontUrl = 'https://github.com/googlefonts/roboto/raw/main/src/hinted/Roboto-Regular.ttf?raw=true';
+            const response = await fetch(fontUrl);
+            if (!response.ok) throw new Error('Impossible de charger la police Roboto');
+            const buffer = await response.arrayBuffer();
+            customFontBytes = new Uint8Array(buffer);
+            console.log('Police Roboto chargée');
+            return customFontBytes;
+        } catch (error) {
+            console.error(error);
+            alert("Le chargement de la police UTF-16 a échoué. Vérifiez votre connexion.");
+            return null;
         }
-        return cleaned;
     }
 
-    // ---------- Extraction robuste ----------
+    // ---------- Fusion des blocs qui se chevauchent (évite duplicatas) ----------
+    function mergeOverlappingItems(items) {
+        // On trie par Y croissant puis X croissant
+        const sorted = [...items].sort((a, b) => a.y - b.y || a.x - b.x);
+        const merged = [];
+        
+        for (let item of sorted) {
+            let added = false;
+            for (let existing of merged) {
+                // Vérifier si les rectangles se chevauchent
+                const overlapX = !(item.x + item.width < existing.x || existing.x + existing.width < item.x);
+                const overlapY = !(item.y + item.height < existing.y || existing.y + existing.height < item.y);
+                if (overlapX && overlapY) {
+                    // Fusionner : agrandir le rectangle pour englober les deux
+                    const newX = Math.min(existing.x, item.x);
+                    const newY = Math.min(existing.y, item.y);
+                    const newWidth = Math.max(existing.x + existing.width, item.x + item.width) - newX;
+                    const newHeight = Math.max(existing.y + existing.height, item.y + item.height) - newY;
+                    existing.x = newX;
+                    existing.y = newY;
+                    existing.width = newWidth;
+                    existing.height = newHeight;
+                    existing.content += ' ' + item.content; // fusion du contenu
+                    existing.originalContent = existing.content;
+                    existing.userSettings.content = existing.content;
+                    added = true;
+                    break;
+                }
+            }
+            if (!added) {
+                merged.push({ ...item }); // copie
+            }
+        }
+        return merged;
+    }
+
+    // ---------- Extraction robuste avec fusion des chevauchements ----------
     async function loadPDF(file) {
         const arrayBuffer = await file.arrayBuffer();
         originalPdfBytes = new Uint8Array(arrayBuffer);
@@ -320,10 +364,10 @@
                     height: height,
                     fontSize: fontSize,
                     fontName: item.fontName || 'Helvetica',
-                    transform: transform
                 });
             }
             
+            // Regrouper par ligne (tolérance 5 pts en Y)
             const lines = [];
             fragments.sort((a, b) => a.y - b.y);
             for (let frag of fragments) {
@@ -340,6 +384,7 @@
                 }
             }
             
+            // Fusionner les fragments d'une même ligne (écart X < 10)
             const mergedItems = [];
             for (let line of lines) {
                 line.items.sort((a, b) => a.x - b.x);
@@ -347,34 +392,30 @@
                 for (let frag of line.items) {
                     if (!currentBlock) {
                         currentBlock = {
-                            items: [frag],
                             content: frag.content,
                             x: frag.x,
                             y: frag.y,
                             width: frag.width,
                             height: frag.height,
                             fontSize: frag.fontSize,
-                            fontName: frag.fontName
+                            fontName: frag.fontName,
                         };
                     } else {
                         const lastX = currentBlock.x + currentBlock.width;
                         if (frag.x - lastX < 10) {
-                            currentBlock.items.push(frag);
                             currentBlock.content += frag.content;
                             currentBlock.width = (frag.x + frag.width) - currentBlock.x;
                             currentBlock.height = Math.max(currentBlock.height, frag.height);
-                            currentBlock.fontSize = currentBlock.items[0].fontSize;
                         } else {
                             mergedItems.push(currentBlock);
                             currentBlock = {
-                                items: [frag],
                                 content: frag.content,
                                 x: frag.x,
                                 y: frag.y,
                                 width: frag.width,
                                 height: frag.height,
                                 fontSize: frag.fontSize,
-                                fontName: frag.fontName
+                                fontName: frag.fontName,
                             };
                         }
                     }
@@ -382,7 +423,8 @@
                 if (currentBlock) mergedItems.push(currentBlock);
             }
             
-            const finalItems = mergedItems.map(item => ({
+            // Fusionner les blocs qui se chevauchent (élimine duplicatas)
+            const finalItems = mergeOverlappingItems(mergedItems).map(item => ({
                 content: item.content,
                 originalContent: item.content,
                 x: item.x,
@@ -395,7 +437,7 @@
                 userSettings: {
                     content: item.content,
                     color: '#000000',
-                    fontFamily: 'Helvetica',
+                    fontFamily: 'Unicode',
                     fontSize: item.fontSize
                 }
             }));
@@ -442,11 +484,10 @@
                 
                 const fontSelect = document.createElement('select');
                 fontSelect.innerHTML = `
-                    <option value="Helvetica">Helvetica</option>
+                    <option value="Unicode">Unicode (UTF-16, Roboto)</option>
+                    <option value="Helvetica">Helvetica (Latin1)</option>
                     <option value="TimesRoman">Times Roman</option>
                     <option value="Courier">Courier</option>
-                    <option value="Helvetica-Bold">Helvetica Bold</option>
-                    <option value="Helvetica-Oblique">Helvetica Oblique</option>
                 `;
                 fontSelect.value = item.userSettings.fontFamily;
                 fontSelect.addEventListener('change', (e) => {
@@ -544,7 +585,7 @@
             const fontSizePx = user.fontSize * scaleFactor;
             
             ctx.save();
-            ctx.font = `${fontSizePx}px "${user.fontFamily}", Helvetica, Arial`;
+            ctx.font = `${fontSizePx}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", "Roboto", sans-serif`;
             ctx.fillStyle = user.color;
             const baselineCanvasY = canvasY - (item.height * scaleFactor) * 0.25;
             ctx.fillText(user.content, canvasX, baselineCanvasY);
@@ -552,7 +593,7 @@
         }
     }
     
-    // ---------- Régénération avec nettoyage des caractères ----------
+    // ---------- Génération avec masquage propre ----------
     async function generateModifiedPDF() {
         if (!originalPdfBytes) {
             alert("Aucun PDF chargé.");
@@ -561,34 +602,39 @@
         
         try {
             const PDFLib = window.PDFLib;
-            if (!PDFLib) {
-                throw new Error("La bibliothèque pdf-lib n'est pas chargée. Vérifiez votre connexion internet.");
+            if (!PDFLib) throw new Error("pdf-lib non chargé");
+            
+            const fontBytes = await loadCustomFont();
+            if (!fontBytes) {
+                alert("Police Unicode non disponible. La génération risque d'échouer.");
+                return;
             }
             
             const pdfDocLib = await PDFLib.PDFDocument.load(originalPdfBytes);
+            const customFont = await pdfDocLib.embedFont(fontBytes);
+            
+            // Récupérer la marge de masquage (valeur par défaut 3)
+            const maskMargin = parseFloat(maskMarginInput.value) || 3;
             
             for (let pageData of pagesData) {
                 const pageIndex = pageData.pageNum - 1;
                 const page = pdfDocLib.getPage(pageIndex);
                 
-                for (let item of pageData.items) {
+                // On trie les items pour éviter les interactions (optionnel)
+                const sortedItems = [...pageData.items].sort((a, b) => a.y - b.y);
+                
+                for (let item of sortedItems) {
                     const user = item.userSettings;
                     let rawContent = user.content || '';
                     if (rawContent.trim() === '') continue;
                     
-                    // Nettoyer le texte pour WinAnsi
-                    const cleanedContent = sanitizeTextForWinAnsi(rawContent);
-                    if (cleanedContent !== rawContent) {
-                        console.warn(`Caractères non compatibles supprimés dans le texte : "${rawContent}" -> "${cleanedContent}"`);
-                    }
-                    if (cleanedContent.trim() === '') continue;
+                    // Rectangle de masquage avec marge
+                    const rectW = item.width + maskMargin * 2;
+                    const rectH = item.height + maskMargin * 2;
+                    const rectX = item.x - maskMargin;
+                    const rectY = item.y - maskMargin;
                     
-                    const margin = 2;
-                    const rectW = item.width + margin * 2;
-                    const rectH = item.height + margin * 2;
-                    const rectX = item.x - margin;
-                    const rectY = item.y - margin;
-                    
+                    // Dessiner rectangle blanc
                     page.drawRectangle({
                         x: rectX,
                         y: rectY,
@@ -599,14 +645,17 @@
                         opacity: 1,
                     });
                     
-                    let font;
-                    const fontName = user.fontFamily;
-                    switch(fontName) {
-                        case 'Helvetica': font = await pdfDocLib.embedFont(PDFLib.StandardFonts.Helvetica); break;
-                        case 'Helvetica-Bold': font = await pdfDocLib.embedFont(PDFLib.StandardFonts.HelveticaBold); break;
-                        case 'TimesRoman': font = await pdfDocLib.embedFont(PDFLib.StandardFonts.TimesRoman); break;
-                        case 'Courier': font = await pdfDocLib.embedFont(PDFLib.StandardFonts.Courier); break;
-                        default: font = await pdfDocLib.embedFont(PDFLib.StandardFonts.Helvetica);
+                    // Choix de la police
+                    let fontToUse;
+                    if (user.fontFamily === 'Unicode') {
+                        fontToUse = customFont;
+                    } else {
+                        switch(user.fontFamily) {
+                            case 'Helvetica': fontToUse = await pdfDocLib.embedFont(PDFLib.StandardFonts.Helvetica); break;
+                            case 'TimesRoman': fontToUse = await pdfDocLib.embedFont(PDFLib.StandardFonts.TimesRoman); break;
+                            case 'Courier': fontToUse = await pdfDocLib.embedFont(PDFLib.StandardFonts.Courier); break;
+                            default: fontToUse = await pdfDocLib.embedFont(PDFLib.StandardFonts.Helvetica);
+                        }
                     }
                     
                     const hex = user.color;
@@ -614,13 +663,14 @@
                     const g = parseInt(hex.slice(3,5), 16)/255;
                     const b = parseInt(hex.slice(5,7), 16)/255;
                     
+                    // Positionnement vertical (baseline estimée)
                     const baselineY = item.y + item.height * 0.75;
                     
-                    page.drawText(cleanedContent, {
+                    page.drawText(rawContent, {
                         x: item.x,
                         y: baselineY,
                         size: user.fontSize,
-                        font: font,
+                        font: fontToUse,
                         color: PDFLib.rgb(r, g, b),
                     });
                 }
@@ -630,12 +680,12 @@
             const blob = new Blob([pdfBytes], { type: 'application/pdf' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = 'document_modifie.pdf';
+            link.download = 'document_modifie_propre.pdf';
             link.click();
             URL.revokeObjectURL(link.href);
         } catch (error) {
-            console.error("Erreur lors de la génération du PDF :", error);
-            alert("Une erreur est survenue : " + error.message);
+            console.error(error);
+            alert("Erreur : " + error.message);
         }
     }
     
@@ -646,7 +696,7 @@
                 item.userSettings = {
                     content: item.originalContent,
                     color: '#000000',
-                    fontFamily: 'Helvetica',
+                    fontFamily: 'Unicode',
                     fontSize: item.fontSize,
                 };
             }
@@ -682,6 +732,8 @@
     
     generateBtn.addEventListener('click', generateModifiedPDF);
     resetBtn.addEventListener('click', resetEdits);
+    
+    loadCustomFont();
 </script>
 </body>
 </html>
