@@ -2,781 +2,616 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Éditeur PDF Direct - Modification In-Place</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Éditeur PDF Intelligent - Modifier le texte</title>
+    <!-- Polices Google Fonts pour l'aperçu -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&display=swap" rel="stylesheet">
     <style>
         * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
         }
 
         body {
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            background: #1a1a2e;
-            min-height: 100vh;
-            color: #fff;
+            font-family: 'Inter', sans-serif;
+            background: #f1f5f9;
+            color: #0f172a;
+            padding: 24px;
         }
 
-        .header {
-            background: linear-gradient(90deg, #16213e 0%, #0f3460 100%);
-            padding: 15px 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        }
-
-        .header h1 {
-            font-size: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .header-actions {
-            display: flex;
-            gap: 10px;
-        }
-
-        .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .btn-primary {
-            background: #e94560;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #c13651;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(233, 69, 96, 0.4);
-        }
-
-        .btn-secondary {
-            background: #533483;
-            color: white;
-        }
-
-        .btn-secondary:hover {
-            background: #7b2cbf;
-        }
-
-        .main-container {
-            display: flex;
-            height: calc(100vh - 70px);
-        }
-
-        .toolbar {
-            width: 60px;
-            background: #16213e;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px 0;
-            gap: 15px;
-            border-right: 1px solid #0f3460;
-        }
-
-        .tool-btn {
-            width: 40px;
-            height: 40px;
-            border: none;
-            border-radius: 8px;
-            background: transparent;
-            color: #fff;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            transition: all 0.2s;
-            position: relative;
-        }
-
-        .tool-btn:hover, .tool-btn.active {
-            background: #e94560;
-        }
-
-        .tool-btn::after {
-            content: attr(data-tooltip);
-            position: absolute;
-            left: 50px;
-            background: #000;
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-size: 12px;
-            white-space: nowrap;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.2s;
-        }
-
-        .tool-btn:hover::after {
-            opacity: 1;
-        }
-
-        .workspace {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            background: #2d2d44;
-            overflow: hidden;
-        }
-
-        .pdf-container {
-            flex: 1;
-            overflow: auto;
-            padding: 40px;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            background: 
-                radial-gradient(circle at 20% 50%, #2d2d44 0%, transparent 50%),
-                radial-gradient(circle at 80% 50%, #1a1a2e 0%, transparent 50%),
-                #1a1a2e;
-        }
-
-        .pdf-page {
-            background: white;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-            position: relative;
+        .container {
+            max-width: 1400px;
             margin: 0 auto;
-            transform-origin: top center;
-            transition: transform 0.3s;
         }
 
-        .pdf-canvas {
-            display: block;
-        }
-
-        .text-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-        }
-
-        /* Style pour les champs éditables - exactement comme le texte original */
-        .pdf-text {
-            position: absolute;
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            -webkit-background-clip: text;
+            background-clip: text;
             color: transparent;
-            cursor: text;
-            pointer-events: auto;
-            caret-color: #e94560;
-            outline: none;
-            white-space: pre;
-            transform-origin: bottom left;
         }
 
-        .pdf-text:hover {
-            background: rgba(233, 69, 96, 0.1);
+        .sub {
+            color: #475569;
+            margin-bottom: 24px;
+            border-left: 3px solid #3b82f6;
+            padding-left: 12px;
         }
 
-        .pdf-text:focus {
-            background: rgba(233, 69, 96, 0.2);
-            box-shadow: 0 0 0 2px rgba(233, 69, 96, 0.5);
+        .upload-area {
+            background: white;
+            border-radius: 24px;
+            padding: 32px;
+            text-align: center;
+            border: 2px dashed #cbd5e1;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            margin-bottom: 32px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
 
-        .pdf-text.modified {
-            color: #000 !important;
-            background: rgba(255, 193, 7, 0.3) !important;
+        .upload-area:hover {
+            border-color: #3b82f6;
+            background: #f8fafc;
         }
 
-        .selection-box {
-            position: absolute;
-            border: 2px dashed #e94560;
-            background: rgba(233, 69, 96, 0.1);
-            pointer-events: none;
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        input[type="file"] {
             display: none;
         }
 
-        .bottom-bar {
-            height: 50px;
-            background: #16213e;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 20px;
-            border-top: 1px solid #0f3460;
-        }
-
-        .zoom-controls {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .zoom-btn {
-            width: 30px;
-            height: 30px;
+        .btn {
+            background: #3b82f6;
+            color: white;
             border: none;
-            border-radius: 4px;
-            background: #0f3460;
-            color: white;
+            padding: 10px 20px;
+            border-radius: 40px;
+            font-weight: 500;
             cursor: pointer;
-            font-size: 16px;
+            transition: 0.2s;
+            font-size: 0.9rem;
         }
 
-        .info-panel {
-            position: fixed;
-            right: -350px;
-            top: 70px;
-            width: 350px;
-            height: calc(100vh - 70px);
-            background: #16213e;
-            border-left: 1px solid #0f3460;
-            transition: right 0.3s;
-            padding: 20px;
-            overflow-y: auto;
-            z-index: 100;
+        .btn-secondary {
+            background: #64748b;
         }
 
-        .info-panel.open {
-            right: 0;
+        .btn-danger {
+            background: #ef4444;
         }
 
-        .info-panel h3 {
-            margin-bottom: 20px;
-            color: #e94560;
+        .btn:hover {
+            filter: brightness(0.92);
+            transform: translateY(-1px);
+        }
+
+        .toolbar {
             display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
             align-items: center;
-            gap: 10px;
         }
 
-        .modification-item {
-            background: #0f3460;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            border-left: 3px solid #e94560;
-        }
-
-        .modification-item .original {
-            font-size: 12px;
-            color: #888;
-            text-decoration: line-through;
-            margin-bottom: 5px;
-        }
-
-        .modification-item .new {
-            font-size: 14px;
-            color: #fff;
-            font-weight: 600;
-        }
-
-        .upload-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.9);
+        .editor-panel {
             display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            backdrop-filter: blur(10px);
+            gap: 24px;
+            flex-wrap: wrap;
         }
 
-        .upload-box {
-            background: #16213e;
-            padding: 60px;
+        .text-list {
+            flex: 1;
+            min-width: 320px;
+            background: white;
             border-radius: 20px;
-            text-align: center;
-            border: 2px dashed #533483;
-            cursor: pointer;
-            transition: all 0.3s;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            max-height: 70vh;
+            overflow-y: auto;
         }
 
-        .upload-box:hover {
-            border-color: #e94560;
-            transform: scale(1.05);
+        .page-group {
+            margin-bottom: 24px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 16px;
         }
 
-        .upload-box.dragover {
-            background: #0f3460;
-            border-color: #e94560;
-        }
-
-        .hidden {
-            display: none !important;
-        }
-
-        .notification {
-            position: fixed;
-            top: 80px;
-            right: 20px;
-            padding: 15px 25px;
-            background: #16213e;
-            border-left: 4px solid #e94560;
-            border-radius: 8px;
-            color: white;
-            transform: translateX(400px);
-            transition: transform 0.3s;
-            z-index: 1001;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        }
-
-        .notification.show {
-            transform: translateX(0);
-        }
-
-        .toggle-panel {
-            position: fixed;
-            right: 20px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 40px;
-            height: 80px;
-            background: #e94560;
-            border-radius: 20px 0 0 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            z-index: 99;
-            transition: right 0.3s;
-        }
-
-        .toggle-panel.open {
-            right: 350px;
-        }
-
-        .stats {
-            display: flex;
-            gap: 20px;
-            font-size: 13px;
-            color: #888;
-        }
-
-        .stats span {
-            color: #e94560;
+        .page-title {
             font-weight: 600;
+            font-size: 1.1rem;
+            background: #eef2ff;
+            padding: 8px 12px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            display: inline-block;
+        }
+
+        .text-item {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 16px;
+            border: 1px solid #e2e8f0;
+            transition: 0.1s;
+        }
+
+        .text-item label {
+            font-weight: 500;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: #475569;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .text-content {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            margin-bottom: 12px;
+            resize: vertical;
+        }
+
+        .style-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .style-row select, .style-row input {
+            padding: 6px 10px;
+            border-radius: 20px;
+            border: 1px solid #cbd5e1;
+            background: white;
+        }
+
+        .color-preview {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            cursor: pointer;
+        }
+
+        .preview-canvas {
+            flex: 2;
+            min-width: 400px;
+            background: #e2e8f0;
+            border-radius: 20px;
+            padding: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+
+        canvas {
+            max-width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            background: white;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-weight: 500;
+            color: #3b82f6;
+        }
+
+        footer {
+            margin-top: 32px;
+            text-align: center;
+            font-size: 0.8rem;
+            color: #64748b;
         }
     </style>
 </head>
 <body>
-    <div class="upload-overlay" id="uploadOverlay">
-        <div class="upload-box" id="uploadBox">
-            <div style="font-size: 4rem; margin-bottom: 20px;">📄</div>
-            <h2>Déposez votre PDF ici</h2>
-            <p style="color: #888; margin-top: 10px;">ou cliquez pour sélectionner</p>
-            <input type="file" id="fileInput" accept=".pdf" style="display: none;">
-        </div>
+<div class="container">
+    <h1>✍️ Éditeur PDF Intelligent</h1>
+    <div class="sub">Détecte toutes les zones texte — modifie couleur, police, taille, contenu — sans casser le fichier</div>
+
+    <div class="upload-area" id="uploadArea">
+        <div class="upload-icon">📄📤</div>
+        <div>Cliquez ou glissez‑déposez un PDF ici</div>
+        <input type="file" id="fileInput" accept="application/pdf">
     </div>
 
-    <header class="header">
-        <h1>
-            <span>✏️</span>
-            PDF Editor Direct
-        </h1>
-        <div class="header-actions">
-            <button class="btn btn-secondary" onclick="document.getElementById('fileInput').click()">
-                📂 Ouvrir
-            </button>
-            <button class="btn btn-primary" onclick="exportPDF()">
-                💾 Exporter PDF
-            </button>
-        </div>
-    </header>
+    <div class="toolbar" id="toolbar" style="display: none;">
+        <button class="btn" id="generateBtn">✨ Générer le PDF modifié</button>
+        <button class="btn btn-secondary" id="resetBtn">🔄 Réinitialiser</button>
+    </div>
 
-    <div class="main-container">
-        <div class="toolbar">
-            <button class="tool-btn active" data-tooltip="Sélectionner" onclick="setTool('select')">👆</button>
-            <button class="tool-btn" data-tooltip="Ajouter texte" onclick="setTool('add')">📝</button>
-            <button class="tool-btn" data-tooltip="Dessiner" onclick="setTool('draw')">✏️</button>
-            <button class="tool-btn" data-tooltip="Gomme" onclick="setTool('erase')">🧹</button>
-            <button class="tool-btn" data-tooltip="Réinitialiser" onclick="resetModifications()">🔄</button>
-        </div>
-
-        <div class="workspace">
-            <div class="pdf-container" id="pdfContainer">
-                <div style="color: #666; text-align: center;">
-                    <p>Importez un PDF pour commencer</p>
-                </div>
-            </div>
-            
-            <div class="bottom-bar">
-                <div class="zoom-controls">
-                    <button class="zoom-btn" onclick="zoom(-0.1)">−</button>
-                    <span id="zoomLevel">100%</span>
-                    <button class="zoom-btn" onclick="zoom(0.1)">+</button>
-                </div>
-                <div class="stats">
-                    <div>Modifications: <span id="modCount">0</span></div>
-                    <div>Page: <span id="pageInfo">0/0</span></div>
-                </div>
+    <div id="editorContainer" style="display: none;">
+        <div class="editor-panel">
+            <div class="text-list" id="textList"></div>
+            <div class="preview-canvas" id="previewArea">
+                <canvas id="previewCanvas"></canvas>
+                <div style="margin-top: 8px; font-size: 0.8rem; color: #475569;">Aperçu de la page courante (cliquer sur un texte le sélectionne)</div>
             </div>
         </div>
     </div>
+    <footer>🛡️ Tout se passe localement — aucun fichier n'est envoyé vers un serveur.</footer>
+</div>
 
-    <div class="toggle-panel" id="togglePanel" onclick="toggleInfoPanel()">
-        <span>◀</span>
-    </div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script>
+    // Configuration de PDF.js pour le worker
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
-    <div class="info-panel" id="infoPanel">
-        <h3>📋 Modifications</h3>
-        <div id="modificationsList">
-            <p style="color: #666; text-align: center; margin-top: 50px;">
-                Aucune modification
-            </p>
-        </div>
-    </div>
+    let pdfDoc = null;          // Document PDF original (PDF.js)
+    let pagesData = [];         // { pageNum, items: [{ content, x, y, width, height, fontName, fontSize, color, userSettings }] }
+    let currentPage = 1;
+    let totalPages = 0;
+    let originalPdfBytes = null; // Pour pdf-lib
 
-    <div class="notification" id="notification"></div>
+    // Éléments DOM
+    const fileInput = document.getElementById('fileInput');
+    const uploadArea = document.getElementById('uploadArea');
+    const toolbar = document.getElementById('toolbar');
+    const editorContainer = document.getElementById('editorContainer');
+    const textListDiv = document.getElementById('textList');
+    const generateBtn = document.getElementById('generateBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const previewCanvas = document.getElementById('previewCanvas');
 
-    <script>
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    // Charger un PDF
+    async function loadPDF(file) {
+        const arrayBuffer = await file.arrayBuffer();
+        originalPdfBytes = new Uint8Array(arrayBuffer);
         
-        let currentPDF = null;
-        let pdfDocument = null;
-        let currentScale = 1.5;
-        let modifications = new Map();
-        let currentTool = 'select';
-
-        // Upload handlers
-        const uploadBox = document.getElementById('uploadBox');
-        const fileInput = document.getElementById('fileInput');
-
-        uploadBox.addEventListener('click', () => fileInput.click());
+        // Charger avec PDF.js pour extraire les textes
+        const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+        pdfDoc = await loadingTask.promise;
+        totalPages = pdfDoc.numPages;
         
-        uploadBox.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadBox.classList.add('dragover');
-        });
-
-        uploadBox.addEventListener('dragleave', () => {
-            uploadBox.classList.remove('dragover');
-        });
-
-        uploadBox.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadBox.classList.remove('dragover');
-            const file = e.dataTransfer.files[0];
-            if (file && file.type === 'application/pdf') {
-                loadPDF(file);
-            }
-        });
-
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files[0]) loadPDF(e.target.files[0]);
-        });
-
-        async function loadPDF(file) {
-            showNotification('Chargement du PDF...', 'info');
-            const arrayBuffer = await file.arrayBuffer();
-            currentPDF = arrayBuffer;
+        pagesData = [];
+        
+        // Extraire les textes de chaque page
+        for (let i = 1; i <= totalPages; i++) {
+            const page = await pdfDoc.getPage(i);
+            const textContent = await page.getTextContent();
+            const viewport = page.getViewport({ scale: 1.0 }); // pour avoir les dimensions en points
             
-            try {
-                pdfDocument = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-                document.getElementById('uploadOverlay').classList.add('hidden');
-                await renderAllPages();
-                showNotification('PDF chargé ! Cliquez sur le texte pour modifier', 'success');
-            } catch (error) {
-                showNotification('Erreur de chargement', 'error');
-                console.error(error);
+            const items = [];
+            
+            for (let item of textContent.items) {
+                if (!item.str || item.str.trim() === '') continue;
+                
+                // Transformation: la matrice donne position et dimensions
+                const transform = item.transform;
+                const x = transform[4];
+                const y = viewport.height - transform[5]; // PDF.js utilise y depuis le bas, on convertit pour affichage canvas
+                const width = Math.sqrt(transform[0] ** 2 + transform[2] ** 2);
+                const height = Math.sqrt(transform[1] ** 2 + transform[3] ** 2);
+                
+                // Estimation taille police approximative
+                let fontSize = 12;
+                if (item.height) fontSize = item.height;
+                else if (height > 0) fontSize = height;
+                
+                items.push({
+                    content: item.str,
+                    originalContent: item.str,
+                    x: transform[4],           // coordonnée bas‑gauche en points
+                    y: transform[5],           // bas‑gauche (système PDF)
+                    width: width,
+                    height: height,
+                    fontName: item.fontName || 'Helvetica',
+                    fontSize: fontSize,
+                    color: '#000000',
+                    userSettings: {
+                        content: item.str,
+                        color: '#000000',
+                        fontFamily: 'Helvetica',
+                        fontSize: fontSize
+                    }
+                });
             }
+            
+            pagesData.push({
+                pageNum: i,
+                width: viewport.width,
+                height: viewport.height,
+                items: items
+            });
         }
-
-        async function renderAllPages() {
-            const container = document.getElementById('pdfContainer');
-            container.innerHTML = '';
-            modifications.clear();
-            updateModificationsList();
-
-            for (let i = 1; i <= pdfDocument.numPages; i++) {
-                const page = await pdfDocument.getPage(i);
-                const viewport = page.getViewport({ scale: currentScale });
+        
+        // Afficher l'interface d'édition
+        renderTextList();
+        renderPreview(currentPage);
+        toolbar.style.display = 'flex';
+        editorContainer.style.display = 'block';
+    }
+    
+    // Afficher la liste modifiable des textes (par page)
+    function renderTextList() {
+        textListDiv.innerHTML = '';
+        
+        for (let page of pagesData) {
+            const pageDiv = document.createElement('div');
+            pageDiv.className = 'page-group';
+            pageDiv.innerHTML = `<div class="page-title">📄 Page ${page.pageNum}</div>`;
+            
+            page.items.forEach((item, idx) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'text-item';
+                itemDiv.dataset.page = page.pageNum;
+                itemDiv.dataset.index = idx;
                 
-                const pageDiv = document.createElement('div');
-                pageDiv.className = 'pdf-page';
-                pageDiv.style.width = viewport.width + 'px';
-                pageDiv.style.height = viewport.height + 'px';
-                pageDiv.dataset.pageNum = i;
-                
-                // Canvas pour le rendu PDF
-                const canvas = document.createElement('canvas');
-                canvas.className = 'pdf-canvas';
-                canvas.width = viewport.width;
-                canvas.height = viewport.height;
-                
-                const ctx = canvas.getContext('2d');
-                await page.render({ canvasContext: ctx, viewport }).promise;
-                
-                // Couche de texte éditable
-                const textLayer = document.createElement('div');
-                textLayer.className = 'text-layer';
-                
-                const textContent = await page.getTextContent();
-                
-                textContent.items.forEach((item, idx) => {
-                    const textDiv = createEditableText(item, viewport, i, idx);
-                    textLayer.appendChild(textDiv);
+                // Champ texte modifiable
+                const textArea = document.createElement('textarea');
+                textArea.className = 'text-content';
+                textArea.rows = 2;
+                textArea.value = item.userSettings.content;
+                textArea.addEventListener('input', (e) => {
+                    item.userSettings.content = e.target.value;
+                    updatePreviewForItem(page.pageNum, idx);
                 });
                 
-                pageDiv.appendChild(canvas);
-                pageDiv.appendChild(textLayer);
-                container.appendChild(pageDiv);
-            }
-            
-            document.getElementById('pageInfo').textContent = `1/${pdfDocument.numPages}`;
-        }
-
-        function createEditableText(item, viewport, pageNum, idx) {
-            const div = document.createElement('div');
-            div.className = 'pdf-text';
-            div.textContent = item.str;
-            div.dataset.original = item.str;
-            div.dataset.page = pageNum;
-            div.dataset.index = idx;
-            
-            // Calcul précis de la position et taille
-            const tx = item.transform;
-            const fontSize = Math.sqrt(tx[0] * tx[0] + tx[1] * tx[1]);
-            
-            // Positionnement exact
-            div.style.left = tx[4] + 'px';
-            div.style.top = (viewport.height - tx[5] - fontSize) + 'px';
-            div.style.fontSize = fontSize + 'px';
-            div.style.fontFamily = item.fontName || 'Arial';
-            div.style.transform = `scaleX(${tx[0] / fontSize})`;
-            
-            // Largeur approximative basée sur le texte
-            div.style.minWidth = (item.width || fontSize * item.str.length * 0.6) + 'px';
-            div.style.height = fontSize + 'px';
-            
-            // Gestion de l'édition
-            div.addEventListener('focus', function() {
-                this.style.color = '#000';
-                selectText(this);
-            });
-            
-            div.addEventListener('blur', function() {
-                if (this.textContent !== this.dataset.original) {
-                    this.classList.add('modified');
-                    saveModification(this);
-                } else {
-                    this.classList.remove('modified');
-                    this.style.color = 'transparent';
-                }
-            });
-            
-            div.addEventListener('input', function() {
-                this.classList.add('modified');
-                this.style.color = '#000';
-            });
-            
-            // Double-clic pour sélectionner tout
-            div.addEventListener('dblclick', function(e) {
-                e.stopPropagation();
-                const range = document.createRange();
-                range.selectNodeContents(this);
-                const sel = window.getSelection();
-                sel.removeAllRanges();
-                sel.addRange(range);
-            });
-            
-            return div;
-        }
-
-        function selectText(element) {
-            // Désélectionner les autres
-            document.querySelectorAll('.pdf-text').forEach(el => {
-                if (el !== element) el.style.color = 'transparent';
-            });
-        }
-
-        function saveModification(element) {
-            const key = `${element.dataset.page}-${element.dataset.index}`;
-            const mod = {
-                page: element.dataset.page,
-                index: element.dataset.index,
-                original: element.dataset.original,
-                new: element.textContent,
-                element: element
-            };
-            
-            if (element.textContent === element.dataset.original) {
-                modifications.delete(key);
-            } else {
-                modifications.set(key, mod);
-            }
-            
-            updateModificationsList();
-            document.getElementById('modCount').textContent = modifications.size;
-        }
-
-        function updateModificationsList() {
-            const list = document.getElementById('modificationsList');
-            
-            if (modifications.size === 0) {
-                list.innerHTML = '<p style="color: #666; text-align: center; margin-top: 50px;">Aucune modification</p>';
-                return;
-            }
-            
-            list.innerHTML = '';
-            modifications.forEach((mod, key) => {
-                const item = document.createElement('div');
-                item.className = 'modification-item';
-                item.innerHTML = `
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                        <small style="color: #888;">Page ${mod.page}</small>
-                        <button onclick="restoreOriginal('${key}')" style="background: none; border: none; color: #e94560; cursor: pointer; font-size: 12px;">↩️</button>
-                    </div>
-                    <div class="original">${mod.original}</div>
-                    <div class="new">${mod.new}</div>
+                // Ligne des styles
+                const styleRow = document.createElement('div');
+                styleRow.className = 'style-row';
+                
+                // Sélecteur police (standard PDF-lib)
+                const fontSelect = document.createElement('select');
+                fontSelect.innerHTML = `
+                    <option value="Helvetica">Helvetica</option>
+                    <option value="TimesRoman">Times Roman</option>
+                    <option value="Courier">Courier</option>
+                    <option value="Helvetica-Bold">Helvetica Bold</option>
+                    <option value="Helvetica-Oblique">Helvetica Oblique</option>
                 `;
-                item.onclick = () => {
-                    mod.element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    mod.element.focus();
+                fontSelect.value = item.userSettings.fontFamily;
+                fontSelect.addEventListener('change', (e) => {
+                    item.userSettings.fontFamily = e.target.value;
+                    updatePreviewForItem(page.pageNum, idx);
+                });
+                
+                // Taille police
+                const sizeInput = document.createElement('input');
+                sizeInput.type = 'number';
+                sizeInput.min = 6;
+                sizeInput.max = 72;
+                sizeInput.step = 1;
+                sizeInput.value = item.userSettings.fontSize;
+                sizeInput.style.width = '70px';
+                sizeInput.addEventListener('input', (e) => {
+                    item.userSettings.fontSize = parseInt(e.target.value) || 12;
+                    updatePreviewForItem(page.pageNum, idx);
+                });
+                
+                // Couleur
+                const colorInput = document.createElement('input');
+                colorInput.type = 'color';
+                colorInput.value = item.userSettings.color;
+                colorInput.style.width = '40px';
+                colorInput.style.height = '32px';
+                colorInput.style.border = 'none';
+                colorInput.addEventListener('input', (e) => {
+                    item.userSettings.color = e.target.value;
+                    updatePreviewForItem(page.pageNum, idx);
+                });
+                
+                styleRow.appendChild(fontSelect);
+                styleRow.appendChild(document.createTextNode('Taille:'));
+                styleRow.appendChild(sizeInput);
+                styleRow.appendChild(document.createTextNode('Couleur:'));
+                styleRow.appendChild(colorInput);
+                
+                itemDiv.appendChild(document.createElement('label')).innerText = 'Texte modifiable';
+                itemDiv.appendChild(textArea);
+                itemDiv.appendChild(document.createElement('label')).innerText = 'Style';
+                itemDiv.appendChild(styleRow);
+                
+                // Au clic sur l'item, on centre l'aperçu (optionnel)
+                itemDiv.addEventListener('click', (e) => {
+                    if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'SELECT') {
+                        currentPage = page.pageNum;
+                        renderPreview(currentPage);
+                    }
+                });
+                
+                pageDiv.appendChild(itemDiv);
+            });
+            
+            textListDiv.appendChild(pageDiv);
+        }
+    }
+    
+    // Mettre à jour l'aperçu canvas pour un item spécifique (rafraîchir toute la page)
+    async function updatePreviewForItem(pageNum, itemIdx) {
+        if (currentPage === pageNum) {
+            renderPreview(currentPage);
+        }
+    }
+    
+    // Afficher l'aperçu d'une page avec surlignage modifiable (canvas temporaire)
+    async function renderPreview(pageNum) {
+        const pageData = pagesData.find(p => p.pageNum === pageNum);
+        if (!pageData) return;
+        
+        const page = await pdfDoc.getPage(pageNum);
+        const viewport = page.getViewport({ scale: 1.5 }); // facteur pour un aperçu confortable
+        previewCanvas.width = viewport.width;
+        previewCanvas.height = viewport.height;
+        const ctx = previewCanvas.getContext('2d');
+        
+        // Rendu du fond PDF
+        const renderContext = {
+            canvasContext: ctx,
+            viewport: viewport,
+        };
+        await page.render(renderContext).promise;
+        
+        // Dessiner par dessus les textes modifiés (simulation avec canvas)
+        // Attention: c'est seulement un aperçu, pas le PDF final.
+        // On utilise les coordonnées transformées pour le viewport
+        const scaleFactor = viewport.scale;
+        
+        for (let item of pageData.items) {
+            const user = item.userSettings;
+            if (!user.content || user.content.trim() === '') continue;
+            
+            // Convertir les coordonnées PDF (bas-gauche) en canvas (haut-gauche)
+            const xPdf = item.x;
+            const yPdf = item.y;
+            // Le viewport transforme les points PDF en pixels canvas
+            const [canvasX, canvasY] = viewport.convertToViewportPoint(xPdf, yPdf);
+            // La hauteur estimée en pixels
+            const fontSizePx = user.fontSize * scaleFactor;
+            
+            ctx.save();
+            ctx.font = `${fontSizePx}px "${user.fontFamily}", Helvetica, Arial`;
+            ctx.fillStyle = user.color;
+            ctx.shadowBlur = 0;
+            // On efface un petit rectangle pour masquer l'original (simulation)
+            // Pour l'aperçu on ne fait que surligner
+            ctx.fillStyle = user.color;
+            ctx.fillText(user.content, canvasX, canvasY - fontSizePx * 0.2);
+            ctx.restore();
+        }
+    }
+    
+    // Générer le PDF final avec pdf-lib en remplaçant chaque texte par une version modifiée
+    async function generateModifiedPDF() {
+        if (!originalPdfBytes) return;
+        
+        const pdfLib = window.pdfLib;
+        const pdfDocLib = await pdfLib.PDFDocument.load(originalPdfBytes);
+        
+        for (let pageData of pagesData) {
+            const pageIndex = pageData.pageNum - 1;
+            const page = pdfDocLib.getPage(pageIndex);
+            const { width, height } = page.getSize();
+            
+            // Pour chaque zone texte, on recouvre l'ancien texte par un rectangle blanc puis on écrit le nouveau
+            for (let item of pageData.items) {
+                const user = item.userSettings;
+                if (!user.content || user.content.trim() === '') continue;
+                
+                // Dimensions du rectangle à effacer
+                const rectW = item.width;
+                const rectH = item.height;
+                const rectX = item.x;
+                const rectY = item.y; // bas-gauche
+                
+                // Dessiner un rectangle blanc pour masquer l'ancien texte
+                page.drawRectangle({
+                    x: rectX,
+                    y: rectY,
+                    width: rectW,
+                    height: rectH,
+                    color: pdfLib.rgb(1, 1, 1),
+                    borderColor: pdfLib.rgb(1, 1, 1),
+                    opacity: 1,
+                });
+                
+                // Sélection de la police (standard pdf-lib)
+                let font;
+                const fontName = user.fontFamily;
+                if (fontName === 'Helvetica') font = await pdfDocLib.embedFont(pdfLib.StandardFonts.Helvetica);
+                else if (fontName === 'Helvetica-Bold') font = await pdfDocLib.embedFont(pdfLib.StandardFonts.HelveticaBold);
+                else if (fontName === 'TimesRoman') font = await pdfDocLib.embedFont(pdfLib.StandardFonts.TimesRoman);
+                else if (fontName === 'Courier') font = await pdfDocLib.embedFont(pdfLib.StandardFonts.Courier);
+                else font = await pdfDocLib.embedFont(pdfLib.StandardFonts.Helvetica);
+                
+                // Couleur
+                const hex = user.color;
+                const r = parseInt(hex.slice(1,3), 16)/255;
+                const g = parseInt(hex.slice(3,5), 16)/255;
+                const b = parseInt(hex.slice(5,7), 16)/255;
+                
+                page.drawText(user.content, {
+                    x: rectX,
+                    y: rectY + item.height * 0.2, // léger ajustement vertical
+                    size: user.fontSize,
+                    font: font,
+                    color: pdfLib.rgb(r, g, b),
+                });
+            }
+        }
+        
+        const pdfBytes = await pdfDocLib.save();
+        // Téléchargement
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'document_modifie.pdf';
+        link.click();
+        URL.revokeObjectURL(link.href);
+    }
+    
+    // Réinitialiser toutes les modifications d'une page / de tout
+    function resetEdits() {
+        for (let page of pagesData) {
+            for (let item of page.items) {
+                item.userSettings = {
+                    content: item.originalContent,
+                    color: '#000000',
+                    fontFamily: 'Helvetica',
+                    fontSize: item.fontSize,
                 };
-                list.appendChild(item);
-            });
-        }
-
-        function restoreOriginal(key) {
-            const mod = modifications.get(key);
-            if (mod) {
-                mod.element.textContent = mod.original;
-                mod.element.classList.remove('modified');
-                mod.element.style.color = 'transparent';
-                mod.element.blur();
-                modifications.delete(key);
-                updateModificationsList();
-                document.getElementById('modCount').textContent = modifications.size;
             }
         }
-
-        function resetModifications() {
-            if (modifications.size === 0) return;
-            if (!confirm('Réinitialiser toutes les modifications ?')) return;
-            
-            modifications.forEach((mod) => {
-                mod.element.textContent = mod.original;
-                mod.element.classList.remove('modified');
-                mod.element.style.color = 'transparent';
-            });
-            modifications.clear();
-            updateModificationsList();
-            document.getElementById('modCount').textContent = 0;
-            showNotification('Modifications réinitialisées', 'success');
+        renderTextList();
+        renderPreview(currentPage);
+    }
+    
+    // Gestionnaire upload
+    uploadArea.addEventListener('click', () => fileInput.click());
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.style.borderColor = '#3b82f6';
+    });
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.style.borderColor = '#cbd5e1';
+    });
+    uploadArea.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        uploadArea.style.borderColor = '#cbd5e1';
+        const file = e.dataTransfer.files[0];
+        if (file && file.type === 'application/pdf') {
+            await loadPDF(file);
+        } else {
+            alert('Veuillez déposer un fichier PDF');
         }
-
-        async function exportPDF() {
-            if (!currentPDF) {
-                showNotification('Aucun PDF à exporter', 'error');
-                return;
-            }
-
-            showNotification('Génération du PDF...', 'info');
-            
-            try {
-                const pages = document.querySelectorAll('.pdf-page');
-                const { PDFDocument } = PDFLib;
-                const newPdf = await PDFDocument.create();
-                
-                for (let pageDiv of pages) {
-                    // Capture haute qualité
-                    const canvas = await html2canvas(pageDiv, {
-                        scale: 2,
-                        useCORS: true,
-                        allowTaint: true,
-                        backgroundColor: '#ffffff',
-                        logging: false
-                    });
-                    
-                    const imgData = canvas.toDataURL('image/jpeg', 0.95);
-                    const imgBytes = await fetch(imgData).then(r => r.arrayBuffer());
-                    const img = await newPdf.embedJpg(imgBytes);
-                    
-                    const page = newPdf.addPage([img.width, img.height]);
-                    page.drawImage(img, {
-                        x: 0,
-                        y: 0,
-                        width: img.width,
-                        height: img.height
-                    });
-                }
-                
-                const pdfBytes = await newPdf.save();
-                const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-                const url = URL.createObjectURL(blob);
-                
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'document_modifie.pdf';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                
-                showNotification('PDF exporté avec succès !', 'success');
-            } catch (error) {
-                console.error(error);
-                showNotification('Erreur lors de l\'export', 'error');
-            }
-        }
-
-        function setTool(tool) {
-            currentTool = tool;
-            document.querySelectorAll('.tool-btn').forEach(btn => {
-                btn.classList.remove('active');
-                if (btn.getAttribute('onclick').includes(tool)) {
-                    btn.classList.add('active');
-                }
-            });
-        }
-
-        function zoom(delta) {
-            currentScale = Math.max(0.5, Math.min(3, currentScale + delta));
-            document.getElementById('zoomLevel').textContent = Math.round(currentScale * 100) + '%';
-            if (pdfDocument) renderAllPages();
-        }
-
-        function toggleInfoPanel() {
-            const panel = document.getElementById('infoPanel');
-            const toggle = document.getElementById('togglePanel');
-            panel.classList.toggle('open');
-            toggle.classList.toggle('open');
-            toggle.innerHTML = panel.classList.contains('open') ? '▶' : '◀';
-        }
-
-        function showNotification(message, type) {
-            const notif = document.getElementById('notification');
-            notif.textContent = message;
-            notif.style.borderLeftColor = type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : '#17a2b8';
-            notif.classList.add('show');
-            setTimeout(() => notif.classList.remove('show'), 3000);
-        }
-
-        // Raccourcis clavier
-        document.addEventListener('keydown', (e) => {
-            if (e.ctrlKey || e.metaKey) {
-                if (e.key === 's') {
-                    e.preventDefault();
-                    exportPDF();
-                } else if (e.key === 'o') {
-                    e.preventDefault();
-                    document.getElementById('fileInput').click();
+    });
+    
+    fileInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (file) await loadPDF(file);
+    });
+    
+    generateBtn.addEventListener('click', generateModifiedPDF);
+    resetBtn.addEventListener('click', resetEdits);
+    
+    // Sélection page par clic sur le groupe (simplifié)
+    textListDiv.addEventListener('click', (e) => {
+        const pageDiv = e.target.closest('.page-group');
+        if (pageDiv) {
+            const titleDiv = pageDiv.querySelector('.page-title');
+            if (titleDiv) {
+                const pageNum = parseInt(titleDiv.innerText.match(/\d+/)[0]);
+                if (!isNaN(pageNum)) {
+                    currentPage = pageNum;
+                    renderPreview(currentPage);
                 }
             }
-        });
-    </script>
+        }
+    });
+</script>
 </body>
 </html>
