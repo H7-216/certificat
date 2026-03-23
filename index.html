@@ -1,720 +1,725 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Éditeur PDF Intelligent - Stable</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&display=swap" rel="stylesheet">
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Éditeur PDF</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        body {
-            font-family: 'Inter', sans-serif;
-            background: #f1f5f9;
-            color: #0f172a;
-            padding: 24px;
-        }
+    :root {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --border: #e2e8f0;
+      --primary: #3b82f6;
+      --primary-dark: #2563eb;
+      --text: #0f172a;
+      --muted: #64748b;
+      --accent-bg: #eff6ff;
+      --accent-border: #bfdbfe;
+      --warn-bg: #fefce8;
+      --warn-border: #fde68a;
+      --radius: 10px;
+      --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+      --shadow-lg: 0 10px 25px rgba(0,0,0,.10), 0 4px 10px rgba(0,0,0,.06);
+    }
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
 
-        h1 {
-            font-size: 1.8rem;
-            font-weight: 600;
-            margin-bottom: 8px;
-            background: linear-gradient(135deg, #1e3c72, #2a5298);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-        }
+    /* ── Header ─────────────────────────────────────── */
+    #header {
+      display: none;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      padding: 0 1rem;
+      height: 56px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
 
-        .sub {
-            color: #475569;
-            margin-bottom: 24px;
-            border-left: 3px solid #3b82f6;
-            padding-left: 12px;
-        }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
 
-        .upload-area {
-            background: white;
-            border-radius: 24px;
-            padding: 32px;
-            text-align: center;
-            border: 2px dashed #cbd5e1;
-            transition: all 0.2s ease;
-            cursor: pointer;
-            margin-bottom: 32px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        }
+    .logo {
+      width: 32px;
+      height: 32px;
+      background: var(--primary);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
 
-        .upload-area:hover {
-            border-color: #3b82f6;
-            background: #f8fafc;
-        }
+    .logo svg { width: 16px; height: 16px; color: #fff; }
 
-        .upload-icon {
-            font-size: 48px;
-            margin-bottom: 12px;
-        }
+    .header-title {
+      font-weight: 700;
+      font-size: 14px;
+      white-space: nowrap;
+    }
 
-        input[type="file"] {
-            display: none;
-        }
+    #file-name {
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 200px;
+    }
 
-        .btn {
-            background: #3b82f6;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 40px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: 0.2s;
-            font-size: 0.9rem;
-        }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
 
-        .btn-secondary {
-            background: #64748b;
-        }
+    .stats-pill {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--muted);
+      background: var(--bg);
+      border-radius: 999px;
+      padding: 4px 12px;
+    }
 
-        .btn:hover {
-            filter: brightness(0.92);
-            transform: translateY(-1px);
-        }
+    @media (min-width: 640px) { .stats-pill { display: flex; } }
 
-        .toolbar {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 24px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
+    #mod-count-badge {
+      display: none;
+      color: #d97706;
+      font-weight: 600;
+    }
 
-        .margin-control {
-            background: white;
-            padding: 6px 12px;
-            border-radius: 40px;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.85rem;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-        }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 6px 14px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: opacity .15s, background .15s;
+      font-family: inherit;
+    }
 
-        .margin-control input {
-            width: 70px;
-            padding: 4px 8px;
-            border-radius: 20px;
-            border: 1px solid #cbd5e1;
-        }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
 
-        .editor-panel {
-            display: flex;
-            gap: 24px;
-            flex-wrap: wrap;
-        }
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+    }
+    .btn-ghost:hover:not(:disabled) { background: var(--bg); color: var(--text); }
 
-        .text-list {
-            flex: 1;
-            min-width: 320px;
-            background: white;
-            border-radius: 20px;
-            padding: 20px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-            max-height: 70vh;
-            overflow-y: auto;
-        }
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+    }
+    .btn-primary:hover:not(:disabled) { background: var(--primary-dark); }
 
-        .page-group {
-            margin-bottom: 24px;
-            border-bottom: 1px solid #e2e8f0;
-            padding-bottom: 16px;
-        }
+    .mod-badge {
+      display: none;
+      background: rgba(255,255,255,.25);
+      border-radius: 999px;
+      padding: 1px 7px;
+      font-size: 11px;
+    }
 
-        .page-title {
-            font-weight: 600;
-            font-size: 1.1rem;
-            background: #eef2ff;
-            padding: 8px 12px;
-            border-radius: 12px;
-            margin-bottom: 16px;
-            display: inline-block;
-            cursor: pointer;
-        }
+    /* ── Drop Zone ──────────────────────────────────── */
+    #dropzone-wrapper {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
 
-        .text-item {
-            background: #f8fafc;
-            border-radius: 16px;
-            padding: 16px;
-            margin-bottom: 16px;
-            border: 1px solid #e2e8f0;
-            transition: 0.1s;
-        }
+    #dropzone {
+      width: 100%;
+      max-width: 480px;
+      border: 2px dashed var(--border);
+      border-radius: 20px;
+      padding: 48px 32px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      cursor: pointer;
+      transition: border-color .2s, background .2s, transform .2s;
+      text-align: center;
+    }
 
-        .text-item label {
-            font-weight: 500;
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            color: #475569;
-            display: block;
-            margin-bottom: 4px;
-        }
+    #dropzone:hover, #dropzone.dragging {
+      border-color: var(--primary);
+      background: var(--accent-bg);
+      transform: scale(1.01);
+    }
 
-        .text-content {
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid #cbd5e1;
-            border-radius: 12px;
-            font-family: inherit;
-            font-size: 0.9rem;
-            margin-bottom: 12px;
-            resize: vertical;
-        }
+    .drop-icon {
+      width: 72px;
+      height: 72px;
+      border-radius: 18px;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .2s;
+    }
 
-        .style-row {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
+    #dropzone:hover .drop-icon, #dropzone.dragging .drop-icon {
+      background: rgba(59,130,246,.12);
+    }
 
-        .style-row select, .style-row input {
-            padding: 6px 10px;
-            border-radius: 20px;
-            border: 1px solid #cbd5e1;
-            background: white;
-        }
+    .drop-icon svg { width: 36px; height: 36px; color: var(--muted); transition: color .2s; }
+    #dropzone:hover .drop-icon svg, #dropzone.dragging .drop-icon svg { color: var(--primary); }
 
-        .preview-canvas {
-            flex: 2;
-            min-width: 400px;
-            background: #e2e8f0;
-            border-radius: 20px;
-            padding: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-            text-align: center;
-        }
+    .drop-title { font-size: 17px; font-weight: 600; }
+    .drop-sub { font-size: 13px; color: var(--muted); }
 
-        canvas {
-            max-width: 100%;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            background: white;
-        }
+    .drop-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--muted);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 4px 14px;
+    }
 
-        footer {
-            margin-top: 32px;
-            text-align: center;
-            font-size: 0.8rem;
-            color: #64748b;
-        }
-    </style>
+    /* ── Loading ────────────────────────────────────── */
+    #loading {
+      flex: 1;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 24px;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-title { font-size: 14px; font-weight: 500; }
+    .loading-sub { font-size: 12px; color: var(--muted); }
+
+    .progress-track {
+      width: 192px;
+      height: 6px;
+      background: var(--border);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    #progress-bar {
+      height: 100%;
+      width: 0;
+      background: var(--primary);
+      border-radius: 999px;
+      transition: width .3s;
+    }
+
+    #progress-pct { font-size: 12px; color: var(--muted); }
+
+    /* ── Pages container ────────────────────────────── */
+    #pages-container {
+      display: none;
+      max-width: 960px;
+      margin: 0 auto;
+      width: 100%;
+      padding: 24px 16px 48px;
+    }
+
+    @media (min-width: 640px) { #pages-container { padding: 24px 24px 48px; } }
+
+    .info-bar {
+      background: var(--accent-bg);
+      border: 1px solid var(--accent-border);
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: #1d4ed8;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    .page-wrapper {
+      position: relative;
+      background: #fff;
+      box-shadow: var(--shadow-lg);
+      margin: 0 auto 24px;
+      overflow: visible;
+    }
+
+    .page-wrapper canvas { display: block; }
+
+    .page-badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: rgba(0,0,0,.4);
+      color: #fff;
+      font-size: 11px;
+      padding: 2px 10px;
+      border-radius: 999px;
+      pointer-events: none;
+      font-family: 'Inter', sans-serif;
+    }
+
+    /* ── pdf.js TextLayer ───────────────────────────── */
+    .textLayer {
+      position: absolute;
+      text-align: initial;
+      inset: 0;
+      overflow: visible;
+      opacity: 1;
+      line-height: 1;
+      text-size-adjust: none;
+      forced-color-adjust: none;
+      transform-origin: 0 0;
+      caret-color: CanvasText;
+      z-index: 2;
+    }
+
+    .textLayer :is(span, br) {
+      color: transparent;
+      position: absolute;
+      white-space: pre;
+      cursor: text;
+      transform-origin: 0% 0%;
+      border-radius: 2px;
+      transition: background-color .1s;
+    }
+
+    .textLayer span:not(.markedContent):hover {
+      background-color: rgba(59,130,246,.18) !important;
+    }
+
+    .textLayer span[data-modified="true"] {
+      background-color: rgba(251,191,36,.30) !important;
+    }
+
+    .textLayer .endOfContent {
+      display: block;
+      position: absolute;
+      inset: 100% 0 0;
+      z-index: -1;
+      cursor: default;
+      user-select: none;
+    }
+
+    /* ── Edit input ─────────────────────────────────── */
+    #edit-input {
+      display: none;
+      position: absolute;
+      z-index: 500;
+      background: #fff;
+      border: 2px solid var(--primary);
+      border-radius: 5px;
+      outline: none;
+      padding: 1px 6px;
+      box-shadow: 0 4px 16px rgba(59,130,246,.28);
+      font-family: 'Inter', sans-serif;
+      line-height: 1;
+    }
+
+    /* ── Scrollbar ──────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
 </head>
 <body>
-<div class="container">
-    <h1>✍️ Éditeur PDF Intelligent (Sans Duplicata)</h1>
-    <div class="sub">Détecte tous les textes — modifie couleur, police, taille, contenu — masquage renforcé pour un résultat propre</div>
 
-    <div class="upload-area" id="uploadArea">
-        <div class="upload-icon">📄📤</div>
-        <div>Cliquez ou glissez‑déposez un PDF ici</div>
-        <input type="file" id="fileInput" accept="application/pdf">
+<!-- Header (shown after PDF loaded) -->
+<header id="header">
+  <div class="header-left">
+    <div class="logo">
+      <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      </svg>
     </div>
+    <span class="header-title">Éditeur PDF</span>
+    <span id="file-name"></span>
+  </div>
+  <div class="header-right">
+    <div class="stats-pill">
+      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <span id="pages-count"></span>
+      <span style="color:var(--border)">·</span>
+      <span id="items-count"></span>
+      <span style="color:var(--border)" id="mod-sep" style="display:none">·</span>
+      <span id="mod-count-badge"></span>
+    </div>
+    <button class="btn btn-ghost" id="new-pdf-btn">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+      <span class="hide-mobile">Nouveau PDF</span>
+    </button>
+    <button class="btn btn-primary" id="export-btn" disabled>
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Exporter
+      <span class="mod-badge" id="export-badge"></span>
+    </button>
+  </div>
+</header>
 
-    <div class="toolbar" id="toolbar" style="display: none;">
-        <button class="btn" id="generateBtn">✨ Générer le PDF modifié</button>
-        <button class="btn btn-secondary" id="resetBtn">🔄 Réinitialiser</button>
-        <div class="margin-control">
-            <span>Marge masquage :</span>
-            <input type="number" id="maskMargin" value="5" step="0.5" min="0" max="15">
-            <span>points</span>
-        </div>
+<!-- Drop Zone -->
+<div id="dropzone-wrapper">
+  <div id="dropzone">
+    <div class="drop-icon">
+      <svg fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+        <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/>
+        <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+      </svg>
     </div>
-
-    <div id="editorContainer" style="display: none;">
-        <div class="editor-panel">
-            <div class="text-list" id="textList"></div>
-            <div class="preview-canvas" id="previewArea">
-                <canvas id="previewCanvas"></canvas>
-                <div style="margin-top: 8px; font-size: 0.8rem; color: #475569;">Aperçu de la page courante (cliquer sur un titre de page ou un texte le sélectionne)</div>
-            </div>
-        </div>
+    <div>
+      <p class="drop-title">Importer un PDF</p>
+      <p class="drop-sub" style="margin-top:4px">Glissez-déposez votre fichier ici, ou cliquez pour parcourir</p>
     </div>
-    <footer>🛡️ Tout est local — pas de police externe, encodage WinAnsi avec nettoyage des caractères spéciaux.</footer>
+    <span class="drop-pill">
+      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Fichiers PDF uniquement
+    </span>
+  </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-<script>
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+<!-- Loading -->
+<div id="loading">
+  <div class="spinner"></div>
+  <div style="text-align:center">
+    <p class="loading-title">Chargement du PDF…</p>
+    <p class="loading-sub" style="margin-top:4px">Détection des zones de texte</p>
+  </div>
+  <div class="progress-track"><div id="progress-bar"></div></div>
+  <p id="progress-pct">0%</p>
+</div>
 
-    let pdfDoc = null;
-    let pagesData = [];
-    let currentPage = 1;
-    let totalPages = 0;
-    let originalPdfBytes = null;
+<!-- Pages -->
+<div id="pages-container"></div>
 
-    const fileInput = document.getElementById('fileInput');
-    const uploadArea = document.getElementById('uploadArea');
-    const toolbar = document.getElementById('toolbar');
-    const editorContainer = document.getElementById('editorContainer');
-    const textListDiv = document.getElementById('textList');
-    const generateBtn = document.getElementById('generateBtn');
-    const resetBtn = document.getElementById('resetBtn');
-    const previewCanvas = document.getElementById('previewCanvas');
-    const maskMarginInput = document.getElementById('maskMargin');
+<!-- Floating edit input -->
+<input id="edit-input" type="text" spellcheck="false" autocomplete="off" />
 
-    // Nettoyage des caractères non compatibles avec WinAnsi (ISO-8859-1)
-    function sanitizeForWinAnsi(text) {
-        let cleaned = '';
-        for (let i = 0; i < text.length; i++) {
-            const code = text.charCodeAt(i);
-            // Plages acceptables : espace (0x20), 0x21-0x7E (ASCII imprimable), 0xA0-0xFF (Latin1 étendu)
-            if (code === 0x20 || (code >= 0x21 && code <= 0x7E) || (code >= 0xA0 && code <= 0xFF)) {
-                cleaned += text[i];
-            } else {
-                cleaned += ' '; // remplacer par un espace
-            }
-        }
-        return cleaned;
+<style>
+  @media (max-width: 500px) { .hide-mobile { display: none; } }
+</style>
+
+<script type="module">
+  import {
+    getDocument,
+    GlobalWorkerOptions,
+    TextLayer
+  } from 'https://unpkg.com/pdfjs-dist@4.10.38/build/pdf.min.mjs';
+
+  GlobalWorkerOptions.workerSrc =
+    'https://unpkg.com/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
+
+  // ── State ───────────────────────────────────────────────────────────
+  let pages       = [];          // { pageIndex, canvas, width, height, scale, viewport, textContent, textItems }
+  let mods        = new Map();   // "pIdx-iIdx" → { pageIndex, itemIndex, originalText, newText, item }
+  let exportBytes = null;        // Uint8Array kept for pdf-lib
+  let fileName    = '';
+
+  // ── DOM ─────────────────────────────────────────────────────────────
+  const $ = id => document.getElementById(id);
+  const dropzoneWrap = $('dropzone-wrapper');
+  const dropzone     = $('dropzone');
+  const loadingEl    = $('loading');
+  const pagesEl      = $('pages-container');
+  const header       = $('header');
+  const editInput    = $('edit-input');
+  const exportBtn    = $('export-btn');
+  const exportBadge  = $('export-badge');
+  const newPdfBtn    = $('new-pdf-btn');
+  const progressBar  = $('progress-bar');
+  const progressPct  = $('progress-pct');
+  const fileNameEl   = $('file-name');
+  const pagesCount   = $('pages-count');
+  const itemsCount   = $('items-count');
+  const modBadge     = $('mod-count-badge');
+  const modSep       = $('mod-sep');
+
+  // ── File picking ────────────────────────────────────────────────────
+  dropzone.addEventListener('click', pickFile);
+  newPdfBtn.addEventListener('click', pickFile);
+
+  function pickFile() {
+    const inp = document.createElement('input');
+    inp.type = 'file';
+    inp.accept = '.pdf,application/pdf';
+    inp.onchange = e => { const f = e.target.files[0]; if (f) loadPdf(f); };
+    inp.click();
+  }
+
+  dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragging'); });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragging'));
+  dropzone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropzone.classList.remove('dragging');
+    const f = e.dataTransfer.files[0];
+    if (f?.type === 'application/pdf') loadPdf(f);
+  });
+
+  // ── Load PDF ────────────────────────────────────────────────────────
+  async function loadPdf(file) {
+    fileName = file.name;
+    pages = [];
+    mods.clear();
+    updateHeader();
+
+    dropzoneWrap.style.display = 'none';
+    loadingEl.style.display    = 'flex';
+    pagesEl.style.display      = 'none';
+    pagesEl.innerHTML          = '';
+    header.style.display       = 'none';
+
+    const buf = await file.arrayBuffer();
+    exportBytes = new Uint8Array(buf.slice(0));
+    const renderBytes = new Uint8Array(buf.slice(0));
+
+    const pdf = await getDocument({ data: renderBytes }).promise;
+    const n   = pdf.numPages;
+
+    for (let i = 1; i <= n; i++) {
+      const page       = await pdf.getPage(i);
+      const maxW       = Math.min(window.innerWidth - 48, 900);
+      const unscaled   = page.getViewport({ scale: 1 });
+      const scale      = maxW / unscaled.width;
+      const viewport   = page.getViewport({ scale });
+
+      const canvas = document.createElement('canvas');
+      canvas.width  = Math.floor(viewport.width);
+      canvas.height = Math.floor(viewport.height);
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+
+      const textContent = await page.getTextContent();
+      const textItems   = textContent.items.filter(it => it.str && it.str.trim());
+
+      pages.push({ pageIndex: i - 1, canvas, width: canvas.width, height: canvas.height, scale, viewport, textContent, textItems });
+
+      const pct = Math.round((i / n) * 100);
+      progressBar.style.width = pct + '%';
+      progressPct.textContent = pct + '%';
     }
 
-    // Fusion des blocs qui se chevauchent
-    function mergeOverlappingItems(items) {
-        const sorted = [...items].sort((a, b) => a.y - b.y || a.x - b.x);
-        const merged = [];
+    loadingEl.style.display = 'none';
+    pagesEl.style.display   = 'block';
+    header.style.display    = 'flex';
+    updateHeader();
+    renderPages();
+  }
 
-        for (let item of sorted) {
-            let foundOverlap = false;
-            for (let existing of merged) {
-                const overlapX = !(item.x + item.width < existing.x || existing.x + existing.width < item.x);
-                const overlapY = !(item.y + item.height < existing.y || existing.y + existing.height < item.y);
-                if (overlapX && overlapY) {
-                    const newX = Math.min(existing.x, item.x);
-                    const newY = Math.min(existing.y, item.y);
-                    const newWidth = Math.max(existing.x + existing.width, item.x + item.width) - newX;
-                    const newHeight = Math.max(existing.y + existing.height, item.y + item.height) - newY;
-                    existing.x = newX;
-                    existing.y = newY;
-                    existing.width = newWidth;
-                    existing.height = newHeight;
-                    if (!existing.content.includes(item.content)) {
-                        existing.content += ' ' + item.content;
-                    }
-                    existing.originalContent = existing.content;
-                    existing.userSettings.content = existing.content;
-                    foundOverlap = true;
-                    break;
-                }
-            }
-            if (!foundOverlap) {
-                merged.push({ ...item });
-            }
-        }
-        return merged;
+  // ── Render pages ─────────────────────────────────────────────────
+  function renderPages() {
+    pagesEl.innerHTML = '';
+
+    const infoBar = document.createElement('div');
+    infoBar.className = 'info-bar';
+    infoBar.innerHTML = '<b>Cliquez</b> sur n\'importe quel texte dans le PDF pour le modifier directement. Appuyez sur <b>Entrée</b> pour valider, <b>Échap</b> pour annuler. Puis cliquez sur <b>Exporter</b>.';
+    pagesEl.appendChild(infoBar);
+
+    for (const page of pages) {
+      const wrap = document.createElement('div');
+      wrap.className = 'page-wrapper';
+      wrap.style.width  = page.width  + 'px';
+      wrap.style.height = page.height + 'px';
+
+      // Canvas copy
+      const cv = document.createElement('canvas');
+      cv.width  = page.canvas.width;
+      cv.height = page.canvas.height;
+      cv.style.width  = page.width  + 'px';
+      cv.style.height = page.height + 'px';
+      cv.getContext('2d').drawImage(page.canvas, 0, 0);
+      wrap.appendChild(cv);
+
+      // Text layer div
+      const tlDiv = document.createElement('div');
+      tlDiv.className = 'textLayer';
+      wrap.appendChild(tlDiv);
+
+      // Badge
+      const badge = document.createElement('div');
+      badge.className = 'page-badge';
+      badge.textContent = 'Page ' + (page.pageIndex + 1);
+      wrap.appendChild(badge);
+
+      pagesEl.appendChild(wrap);
+
+      // Render TextLayer
+      const tl = new TextLayer({ textContentSource: page.textContent, container: tlDiv, viewport: page.viewport });
+      tl.render().then(() => attachSpanHandlers(tlDiv, page));
     }
+  }
 
-    // Extraction des textes
-    async function loadPDF(file) {
-        const arrayBuffer = await file.arrayBuffer();
-        originalPdfBytes = new Uint8Array(arrayBuffer);
+  function attachSpanHandlers(tlDiv, page) {
+    const spans = Array.from(tlDiv.querySelectorAll('span:not(.markedContent)'));
+    let ni = 0;
+    spans.forEach(span => {
+      if (!span.textContent?.trim()) return;
+      const idx  = ni++;
+      const item = page.textItems[idx];
+      if (!item) return;
 
-        const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
-        pdfDoc = await loadingTask.promise;
-        totalPages = pdfDoc.numPages;
+      const key = page.pageIndex + '-' + idx;
+      const mod = mods.get(key);
+      if (mod) { span.textContent = mod.newText; span.dataset.modified = 'true'; }
 
-        pagesData = [];
-
-        for (let i = 1; i <= totalPages; i++) {
-            const page = await pdfDoc.getPage(i);
-            const textContent = await page.getTextContent();
-            const viewport = page.getViewport({ scale: 1.0 });
-
-            const fragments = [];
-            for (let item of textContent.items) {
-                if (!item.str || item.str.trim() === '') continue;
-                const transform = item.transform;
-                const x = transform[4];
-                const y = transform[5];
-                const width = Math.sqrt(transform[0] ** 2 + transform[2] ** 2);
-                const height = Math.sqrt(transform[1] ** 2 + transform[3] ** 2);
-                let fontSize = 12;
-                if (item.height) fontSize = item.height;
-                else if (height > 0) fontSize = height;
-
-                fragments.push({
-                    content: item.str,
-                    x: x,
-                    y: y,
-                    width: width,
-                    height: height,
-                    fontSize: fontSize,
-                    fontName: item.fontName || 'Helvetica',
-                });
-            }
-
-            // Regrouper par ligne
-            const lines = [];
-            fragments.sort((a, b) => a.y - b.y);
-            for (let frag of fragments) {
-                let added = false;
-                for (let line of lines) {
-                    if (Math.abs(line.y - frag.y) < 5) {
-                        line.items.push(frag);
-                        added = true;
-                        break;
-                    }
-                }
-                if (!added) {
-                    lines.push({ y: frag.y, items: [frag] });
-                }
-            }
-
-            // Fusionner les fragments d'une même ligne
-            const mergedItems = [];
-            for (let line of lines) {
-                line.items.sort((a, b) => a.x - b.x);
-                let currentBlock = null;
-                for (let frag of line.items) {
-                    if (!currentBlock) {
-                        currentBlock = {
-                            content: frag.content,
-                            x: frag.x,
-                            y: frag.y,
-                            width: frag.width,
-                            height: frag.height,
-                            fontSize: frag.fontSize,
-                            fontName: frag.fontName,
-                        };
-                    } else {
-                        const lastX = currentBlock.x + currentBlock.width;
-                        if (frag.x - lastX < 10) {
-                            currentBlock.content += frag.content;
-                            currentBlock.width = (frag.x + frag.width) - currentBlock.x;
-                            currentBlock.height = Math.max(currentBlock.height, frag.height);
-                        } else {
-                            mergedItems.push(currentBlock);
-                            currentBlock = {
-                                content: frag.content,
-                                x: frag.x,
-                                y: frag.y,
-                                width: frag.width,
-                                height: frag.height,
-                                fontSize: frag.fontSize,
-                                fontName: frag.fontName,
-                            };
-                        }
-                    }
-                }
-                if (currentBlock) mergedItems.push(currentBlock);
-            }
-
-            // Fusionner les blocs qui se chevauchent
-            const finalItems = mergeOverlappingItems(mergedItems).map(item => ({
-                content: item.content,
-                originalContent: item.content,
-                x: item.x,
-                y: item.y,
-                width: item.width,
-                height: item.height,
-                fontName: item.fontName,
-                fontSize: item.fontSize,
-                color: '#000000',
-                userSettings: {
-                    content: item.content,
-                    color: '#000000',
-                    fontFamily: 'Helvetica',
-                    fontSize: item.fontSize
-                }
-            }));
-
-            pagesData.push({
-                pageNum: i,
-                width: viewport.width,
-                height: viewport.height,
-                items: finalItems
-            });
-        }
-
-        renderTextList();
-        renderPreview(currentPage);
-        toolbar.style.display = 'flex';
-        editorContainer.style.display = 'block';
-    }
-
-    function renderTextList() {
-        textListDiv.innerHTML = '';
-
-        for (let page of pagesData) {
-            const pageDiv = document.createElement('div');
-            pageDiv.className = 'page-group';
-            pageDiv.innerHTML = `<div class="page-title" data-page="${page.pageNum}">📄 Page ${page.pageNum}</div>`;
-
-            page.items.forEach((item, idx) => {
-                const itemDiv = document.createElement('div');
-                itemDiv.className = 'text-item';
-                itemDiv.dataset.page = page.pageNum;
-                itemDiv.dataset.index = idx;
-
-                const textArea = document.createElement('textarea');
-                textArea.className = 'text-content';
-                textArea.rows = 2;
-                textArea.value = item.userSettings.content;
-                textArea.addEventListener('input', (e) => {
-                    item.userSettings.content = e.target.value;
-                    updatePreviewForItem(page.pageNum, idx);
-                });
-
-                const styleRow = document.createElement('div');
-                styleRow.className = 'style-row';
-
-                const fontSelect = document.createElement('select');
-                fontSelect.innerHTML = `
-                    <option value="Helvetica">Helvetica</option>
-                    <option value="TimesRoman">Times Roman</option>
-                    <option value="Courier">Courier</option>
-                    <option value="Helvetica-Bold">Helvetica Bold</option>
-                    <option value="Helvetica-Oblique">Helvetica Oblique</option>
-                `;
-                fontSelect.value = item.userSettings.fontFamily;
-                fontSelect.addEventListener('change', (e) => {
-                    item.userSettings.fontFamily = e.target.value;
-                    updatePreviewForItem(page.pageNum, idx);
-                });
-
-                const sizeInput = document.createElement('input');
-                sizeInput.type = 'number';
-                sizeInput.min = 6;
-                sizeInput.max = 72;
-                sizeInput.step = 1;
-                sizeInput.value = item.userSettings.fontSize;
-                sizeInput.style.width = '70px';
-                sizeInput.addEventListener('input', (e) => {
-                    item.userSettings.fontSize = parseInt(e.target.value) || 12;
-                    updatePreviewForItem(page.pageNum, idx);
-                });
-
-                const colorInput = document.createElement('input');
-                colorInput.type = 'color';
-                colorInput.value = item.userSettings.color;
-                colorInput.style.width = '40px';
-                colorInput.style.height = '32px';
-                colorInput.style.border = 'none';
-                colorInput.addEventListener('input', (e) => {
-                    item.userSettings.color = e.target.value;
-                    updatePreviewForItem(page.pageNum, idx);
-                });
-
-                styleRow.appendChild(fontSelect);
-                styleRow.appendChild(document.createTextNode('Taille:'));
-                styleRow.appendChild(sizeInput);
-                styleRow.appendChild(document.createTextNode('Couleur:'));
-                styleRow.appendChild(colorInput);
-
-                itemDiv.appendChild(document.createElement('label')).innerText = 'Texte modifiable';
-                itemDiv.appendChild(textArea);
-                itemDiv.appendChild(document.createElement('label')).innerText = 'Style';
-                itemDiv.appendChild(styleRow);
-
-                itemDiv.addEventListener('click', (e) => {
-                    if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'SELECT') {
-                        currentPage = page.pageNum;
-                        renderPreview(currentPage);
-                    }
-                });
-
-                pageDiv.appendChild(itemDiv);
-            });
-
-            textListDiv.appendChild(pageDiv);
-        }
-
-        document.querySelectorAll('.page-title').forEach(title => {
-            title.addEventListener('click', () => {
-                const pageNum = parseInt(title.dataset.page);
-                if (!isNaN(pageNum)) {
-                    currentPage = pageNum;
-                    renderPreview(currentPage);
-                }
-            });
-        });
-    }
-
-    async function updatePreviewForItem(pageNum, itemIdx) {
-        if (currentPage === pageNum) {
-            renderPreview(currentPage);
-        }
-    }
-
-    async function renderPreview(pageNum) {
-        const pageData = pagesData.find(p => p.pageNum === pageNum);
-        if (!pageData) return;
-
-        const page = await pdfDoc.getPage(pageNum);
-        const viewport = page.getViewport({ scale: 1.5 });
-        previewCanvas.width = viewport.width;
-        previewCanvas.height = viewport.height;
-        const ctx = previewCanvas.getContext('2d');
-
-        const renderContext = {
-            canvasContext: ctx,
-            viewport: viewport,
-        };
-        await page.render(renderContext).promise;
-
-        const scaleFactor = viewport.scale;
-
-        for (let item of pageData.items) {
-            const user = item.userSettings;
-            if (!user.content || user.content.trim() === '') continue;
-
-            const [canvasX, canvasY] = viewport.convertToViewportPoint(item.x, item.y);
-            const fontSizePx = user.fontSize * scaleFactor;
-
-            ctx.save();
-            ctx.font = `${fontSizePx}px "${user.fontFamily}", Helvetica, Arial`;
-            ctx.fillStyle = user.color;
-            const baselineCanvasY = canvasY - (item.height * scaleFactor) * 0.25;
-            ctx.fillText(user.content, canvasX, baselineCanvasY);
-            ctx.restore();
-        }
-    }
-
-    async function generateModifiedPDF() {
-        if (!originalPdfBytes) {
-            alert("Aucun PDF chargé.");
-            return;
-        }
-
-        try {
-            const PDFLib = window.PDFLib;
-            if (!PDFLib) throw new Error("pdf-lib non chargé");
-
-            const pdfDocLib = await PDFLib.PDFDocument.load(originalPdfBytes);
-            const maskMargin = parseFloat(maskMarginInput.value) || 5;
-
-            for (let pageData of pagesData) {
-                const pageIndex = pageData.pageNum - 1;
-                const page = pdfDocLib.getPage(pageIndex);
-
-                const sortedItems = [...pageData.items].sort((a, b) => a.y - b.y);
-
-                for (let item of sortedItems) {
-                    const user = item.userSettings;
-                    let rawContent = user.content || '';
-                    if (rawContent.trim() === '') continue;
-
-                    // Nettoyer le texte pour l'encodage WinAnsi
-                    const cleanedContent = sanitizeForWinAnsi(rawContent);
-                    if (cleanedContent.trim() === '') continue;
-
-                    // Rectangle de masquage
-                    const rectW = item.width + maskMargin * 2;
-                    const rectH = item.height + maskMargin * 2;
-                    const rectX = item.x - maskMargin;
-                    const rectY = item.y - maskMargin;
-
-                    page.drawRectangle({
-                        x: rectX,
-                        y: rectY,
-                        width: rectW,
-                        height: rectH,
-                        color: PDFLib.rgb(1, 1, 1),
-                        borderColor: PDFLib.rgb(1, 1, 1),
-                        borderWidth: 0,
-                        opacity: 1,
-                    });
-
-                    // Police
-                    let font;
-                    const fontName = user.fontFamily;
-                    switch(fontName) {
-                        case 'Helvetica': font = await pdfDocLib.embedFont(PDFLib.StandardFonts.Helvetica); break;
-                        case 'Helvetica-Bold': font = await pdfDocLib.embedFont(PDFLib.StandardFonts.HelveticaBold); break;
-                        case 'TimesRoman': font = await pdfDocLib.embedFont(PDFLib.StandardFonts.TimesRoman); break;
-                        case 'Courier': font = await pdfDocLib.embedFont(PDFLib.StandardFonts.Courier); break;
-                        default: font = await pdfDocLib.embedFont(PDFLib.StandardFonts.Helvetica);
-                    }
-
-                    const hex = user.color;
-                    const r = parseInt(hex.slice(1,3), 16)/255;
-                    const g = parseInt(hex.slice(3,5), 16)/255;
-                    const b = parseInt(hex.slice(5,7), 16)/255;
-
-                    const baselineY = item.y + item.height * 0.75;
-
-                    page.drawText(cleanedContent, {
-                        x: item.x,
-                        y: baselineY,
-                        size: user.fontSize,
-                        font: font,
-                        color: PDFLib.rgb(r, g, b),
-                    });
-                }
-            }
-
-            const pdfBytes = await pdfDocLib.save();
-            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = 'document_modifie_propre.pdf';
-            link.click();
-            URL.revokeObjectURL(link.href);
-        } catch (error) {
-            console.error(error);
-            alert("Erreur lors de la génération : " + error.message);
-        }
-    }
-
-    function resetEdits() {
-        if (!pagesData.length) return;
-        for (let page of pagesData) {
-            for (let item of page.items) {
-                item.userSettings = {
-                    content: item.originalContent,
-                    color: '#000000',
-                    fontFamily: 'Helvetica',
-                    fontSize: item.fontSize,
-                };
-            }
-        }
-        renderTextList();
-        renderPreview(currentPage);
-    }
-
-    // Gestionnaires
-    uploadArea.addEventListener('click', () => fileInput.click());
-    uploadArea.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        uploadArea.style.borderColor = '#3b82f6';
+      span.style.cursor        = 'text';
+      span.style.pointerEvents = 'all';
+      span.addEventListener('click', e => {
+        e.stopPropagation();
+        openEdit(span, page, idx, item, mod?.newText ?? item.str);
+      });
     });
-    uploadArea.addEventListener('dragleave', () => {
-        uploadArea.style.borderColor = '#cbd5e1';
-    });
-    uploadArea.addEventListener('drop', async (e) => {
-        e.preventDefault();
-        uploadArea.style.borderColor = '#cbd5e1';
-        const file = e.dataTransfer.files[0];
-        if (file && file.type === 'application/pdf') {
-            await loadPDF(file);
-        } else {
-            alert('Veuillez déposer un fichier PDF');
-        }
-    });
+  }
 
-    fileInput.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (file) await loadPDF(file);
-    });
+  // ── Inline edit ──────────────────────────────────────────────────
+  let _span = null, _page = null, _item = null, _itemIdx = -1;
 
-    generateBtn.addEventListener('click', generateModifiedPDF);
-    resetBtn.addEventListener('click', resetEdits);
+  function openEdit(span, page, idx, item, currentText) {
+    commitEdit();           // close any open edit first
+
+    const r = span.getBoundingClientRect();
+    const tx = item.transform;
+    const scaleY = Math.sqrt(tx[2] * tx[2] + tx[3] * tx[3]);
+    const fs = Math.max(scaleY * page.scale, 8);
+
+    _span    = span;
+    _page    = page;
+    _item    = item;
+    _itemIdx = idx;
+
+    editInput.value = currentText;
+    editInput.style.display   = 'block';
+    editInput.style.top       = (r.top  + window.scrollY - 3) + 'px';
+    editInput.style.left      = (r.left + window.scrollX - 4) + 'px';
+    editInput.style.minWidth  = Math.max(r.width + 40, 100) + 'px';
+    editInput.style.height    = Math.max(r.height + 6, fs + 10) + 'px';
+    editInput.style.fontSize  = Math.min(fs, 28) + 'px';
+
+    editInput.focus();
+    editInput.select();
+  }
+
+  function commitEdit(save = true) {
+    if (editInput.style.display === 'none') return;
+    if (save && _span) {
+      const newText = editInput.value;
+      const key     = _page.pageIndex + '-' + _itemIdx;
+      mods.set(key, { pageIndex: _page.pageIndex, itemIndex: _itemIdx, originalText: _item.str, newText, item: _item });
+      _span.textContent       = newText;
+      _span.dataset.modified  = 'true';
+      updateHeader();
+    }
+    editInput.style.display = 'none';
+    _span = null; _page = null; _item = null; _itemIdx = -1;
+  }
+
+  editInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter')  { e.preventDefault(); commitEdit(true);  }
+    if (e.key === 'Escape') { commitEdit(false); }
+  });
+  editInput.addEventListener('blur', () => commitEdit(true));
+  document.addEventListener('click', e => { if (e.target !== editInput) commitEdit(true); });
+
+  // ── Header ───────────────────────────────────────────────────────
+  function updateHeader() {
+    const total  = pages.reduce((a, p) => a + p.textItems.length, 0);
+    const n      = mods.size;
+    const hasMod = n > 0;
+
+    fileNameEl.textContent  = fileName ? '— ' + fileName : '';
+    pagesCount.textContent  = pages.length + ' page' + (pages.length > 1 ? 's' : '');
+    itemsCount.textContent  = total + ' zones de texte';
+
+    modBadge.textContent    = n + ' modifié' + (n > 1 ? 's' : '');
+    modBadge.style.display  = hasMod ? 'inline' : 'none';
+    modSep.style.display    = hasMod ? 'inline' : 'none';
+
+    exportBtn.disabled          = !hasMod;
+    exportBadge.textContent     = n;
+    exportBadge.style.display   = hasMod ? 'inline' : 'none';
+    exportBtn.style.opacity     = hasMod ? '1' : '.4';
+  }
+
+  // ── Export ──────────────────────────────────────────────────────
+  exportBtn.addEventListener('click', doExport);
+
+  async function doExport() {
+    if (!exportBytes || mods.size === 0) return;
+
+    exportBtn.disabled    = true;
+    exportBtn.textContent = 'Export en cours…';
+
+    try {
+      const { PDFDocument, rgb, StandardFonts } = PDFLib;
+      const doc  = await PDFDocument.load(exportBytes);
+      const font = await doc.embedFont(StandardFonts.Helvetica);
+
+      for (const [, mod] of mods) {
+        if (mod.newText === mod.originalText) continue;
+
+        const pdfPage = doc.getPages()[mod.pageIndex];
+        const tx      = mod.item.transform;
+        const origX   = tx[4];
+        const origY   = tx[5];
+        const scaleY  = Math.sqrt(tx[2] * tx[2] + tx[3] * tx[3]);
+        const fs      = Math.max(scaleY, 6);
+        const origW   = mod.item.width > 0 ? mod.item.width : fs * mod.originalText.length * 0.6;
+        const coverW  = Math.max(origW, fs * mod.newText.length * 0.6) + 4;
+
+        pdfPage.drawRectangle({ x: origX - 1, y: origY - fs * 0.25, width: coverW, height: fs * 1.35, color: rgb(1,1,1), opacity: 1 });
+        pdfPage.drawText(mod.newText, { x: origX, y: origY, font, size: fs, color: rgb(0,0,0) });
+      }
+
+      const out  = await doc.save();
+      const blob = new Blob([out], { type: 'application/pdf' });
+      const url  = URL.createObjectURL(blob);
+      const a    = Object.assign(document.createElement('a'), { href: url, download: fileName.replace(/\.pdf$/i, '') + '_modifié.pdf' });
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('Erreur lors de l\'export : ' + err.message);
+    } finally {
+      exportBtn.disabled = false;
+      updateHeader();
+    }
+  }
 </script>
 </body>
 </html>
