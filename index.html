@@ -6,25 +6,28 @@
   <title>Éditeur PDF</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- pdf.js UMD build — compatible file://, GitHub Pages, tous navigateurs PC/mobile -->
+  <script src="https://unpkg.com/pdfjs-dist@4.10.38/build/pdf.min.js"></script>
+  <!-- pdf-lib -->
   <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg: #f8fafc;
-      --card: #ffffff;
-      --border: #e2e8f0;
-      --primary: #3b82f6;
-      --primary-dark: #2563eb;
-      --text: #0f172a;
-      --muted: #64748b;
-      --accent-bg: #eff6ff;
-      --accent-border: #bfdbfe;
-      --warn-bg: #fefce8;
-      --warn-border: #fde68a;
-      --radius: 10px;
-      --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
-      --shadow-lg: 0 10px 25px rgba(0,0,0,.10), 0 4px 10px rgba(0,0,0,.06);
+      --bg:             #f8fafc;
+      --card:           #ffffff;
+      --border:         #e2e8f0;
+      --primary:        #3b82f6;
+      --primary-dark:   #2563eb;
+      --text:           #0f172a;
+      --muted:          #64748b;
+      --accent-bg:      #eff6ff;
+      --accent-border:  #bfdbfe;
+      --radius:         10px;
+      --shadow:         0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+      --shadow-lg:      0 10px 25px rgba(0,0,0,.10), 0 4px 10px rgba(0,0,0,.06);
     }
 
     body {
@@ -60,119 +63,75 @@
     }
 
     .logo {
-      width: 32px;
-      height: 32px;
+      width: 32px; height: 32px;
       background: var(--primary);
       border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
     }
-
     .logo svg { width: 16px; height: 16px; color: #fff; }
 
-    .header-title {
-      font-weight: 700;
-      font-size: 14px;
-      white-space: nowrap;
-    }
+    .header-title { font-weight: 700; font-size: 14px; white-space: nowrap; }
 
     #file-name {
-      font-size: 12px;
-      color: var(--muted);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      font-size: 12px; color: var(--muted);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       max-width: 200px;
     }
 
     .header-right {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-shrink: 0;
+      display: flex; align-items: center; gap: 8px; flex-shrink: 0;
     }
 
     .stats-pill {
       display: none;
-      align-items: center;
-      gap: 6px;
-      font-size: 11px;
-      color: var(--muted);
+      align-items: center; gap: 6px;
+      font-size: 11px; color: var(--muted);
       background: var(--bg);
-      border-radius: 999px;
-      padding: 4px 12px;
+      border-radius: 999px; padding: 4px 12px;
     }
-
     @media (min-width: 640px) { .stats-pill { display: flex; } }
 
-    #mod-count-badge {
-      display: none;
-      color: #d97706;
-      font-weight: 600;
-    }
-
     .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 13px;
-      font-weight: 500;
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 13px; font-weight: 500;
       padding: 6px 14px;
-      border-radius: 8px;
-      border: none;
+      border-radius: 8px; border: none;
       cursor: pointer;
       transition: opacity .15s, background .15s;
       font-family: inherit;
     }
-
     .btn:disabled { opacity: .4; cursor: not-allowed; }
 
-    .btn-ghost {
-      background: transparent;
-      color: var(--muted);
-    }
+    .btn-ghost { background: transparent; color: var(--muted); }
     .btn-ghost:hover:not(:disabled) { background: var(--bg); color: var(--text); }
 
-    .btn-primary {
-      background: var(--primary);
-      color: #fff;
-    }
+    .btn-primary { background: var(--primary); color: #fff; }
     .btn-primary:hover:not(:disabled) { background: var(--primary-dark); }
 
     .mod-badge {
       display: none;
       background: rgba(255,255,255,.25);
-      border-radius: 999px;
-      padding: 1px 7px;
-      font-size: 11px;
+      border-radius: 999px; padding: 1px 7px; font-size: 11px;
     }
 
     /* ── Drop Zone ──────────────────────────────────── */
     #dropzone-wrapper {
       flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: flex; align-items: center; justify-content: center;
       padding: 24px;
     }
 
     #dropzone {
-      width: 100%;
-      max-width: 480px;
+      width: 100%; max-width: 480px;
       border: 2px dashed var(--border);
       border-radius: 20px;
       padding: 48px 32px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 16px;
+      display: flex; flex-direction: column; align-items: center; gap: 16px;
       cursor: pointer;
       transition: border-color .2s, background .2s, transform .2s;
       text-align: center;
     }
-
     #dropzone:hover, #dropzone.dragging {
       border-color: var(--primary);
       background: var(--accent-bg);
@@ -180,90 +139,60 @@
     }
 
     .drop-icon {
-      width: 72px;
-      height: 72px;
-      border-radius: 18px;
-      background: var(--bg);
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      width: 72px; height: 72px;
+      border-radius: 18px; background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
       transition: background .2s;
     }
-
-    #dropzone:hover .drop-icon, #dropzone.dragging .drop-icon {
-      background: rgba(59,130,246,.12);
-    }
-
+    #dropzone:hover .drop-icon, #dropzone.dragging .drop-icon { background: rgba(59,130,246,.12); }
     .drop-icon svg { width: 36px; height: 36px; color: var(--muted); transition: color .2s; }
     #dropzone:hover .drop-icon svg, #dropzone.dragging .drop-icon svg { color: var(--primary); }
 
     .drop-title { font-size: 17px; font-weight: 600; }
-    .drop-sub { font-size: 13px; color: var(--muted); }
+    .drop-sub   { font-size: 13px; color: var(--muted); }
 
     .drop-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12px;
-      color: var(--muted);
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      padding: 4px 14px;
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--muted);
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 999px; padding: 4px 14px;
     }
 
     /* ── Loading ────────────────────────────────────── */
     #loading {
-      flex: 1;
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 16px;
-      padding: 24px;
+      flex: 1; display: none;
+      flex-direction: column; align-items: center; justify-content: center;
+      gap: 16px; padding: 24px;
     }
 
     .spinner {
-      width: 40px;
-      height: 40px;
-      border: 3px solid var(--border);
-      border-top-color: var(--primary);
+      width: 40px; height: 40px;
+      border: 3px solid var(--border); border-top-color: var(--primary);
       border-radius: 50%;
       animation: spin .8s linear infinite;
     }
-
     @keyframes spin { to { transform: rotate(360deg); } }
 
     .loading-title { font-size: 14px; font-weight: 500; }
-    .loading-sub { font-size: 12px; color: var(--muted); }
+    .loading-sub   { font-size: 12px; color: var(--muted); }
 
     .progress-track {
-      width: 192px;
-      height: 6px;
-      background: var(--border);
-      border-radius: 999px;
-      overflow: hidden;
+      width: 192px; height: 6px;
+      background: var(--border); border-radius: 999px; overflow: hidden;
     }
-
     #progress-bar {
-      height: 100%;
-      width: 0;
-      background: var(--primary);
-      border-radius: 999px;
-      transition: width .3s;
+      height: 100%; width: 0;
+      background: var(--primary); border-radius: 999px;
+      transition: width .25s;
     }
-
     #progress-pct { font-size: 12px; color: var(--muted); }
 
-    /* ── Pages container ────────────────────────────── */
+    /* ── Pages ──────────────────────────────────────── */
     #pages-container {
       display: none;
-      max-width: 960px;
-      margin: 0 auto;
-      width: 100%;
+      max-width: 960px; margin: 0 auto; width: 100%;
       padding: 24px 16px 48px;
     }
-
     @media (min-width: 640px) { #pages-container { padding: 24px 24px 48px; } }
 
     .info-bar {
@@ -271,10 +200,8 @@
       border: 1px solid var(--accent-border);
       border-radius: 12px;
       padding: 12px 16px;
-      font-size: 13px;
-      color: #1d4ed8;
-      margin-bottom: 20px;
-      line-height: 1.5;
+      font-size: 13px; color: #1d4ed8;
+      margin-bottom: 20px; line-height: 1.5;
     }
 
     .page-wrapper {
@@ -282,21 +209,15 @@
       background: #fff;
       box-shadow: var(--shadow-lg);
       margin: 0 auto 24px;
-      overflow: visible;
+      overflow: hidden;
     }
-
     .page-wrapper canvas { display: block; }
 
     .page-badge {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      background: rgba(0,0,0,.4);
-      color: #fff;
-      font-size: 11px;
-      padding: 2px 10px;
-      border-radius: 999px;
-      pointer-events: none;
+      position: absolute; top: 8px; right: 8px;
+      background: rgba(0,0,0,.4); color: #fff;
+      font-size: 11px; padding: 2px 10px;
+      border-radius: 999px; pointer-events: none;
       font-family: 'Inter', sans-serif;
     }
 
@@ -311,10 +232,8 @@
       text-size-adjust: none;
       forced-color-adjust: none;
       transform-origin: 0 0;
-      caret-color: CanvasText;
       z-index: 2;
     }
-
     .textLayer :is(span, br) {
       color: transparent;
       position: absolute;
@@ -324,22 +243,11 @@
       border-radius: 2px;
       transition: background-color .1s;
     }
-
-    .textLayer span:not(.markedContent):hover {
+    .textLayer span:hover {
       background-color: rgba(59,130,246,.18) !important;
     }
-
     .textLayer span[data-modified="true"] {
       background-color: rgba(251,191,36,.30) !important;
-    }
-
-    .textLayer .endOfContent {
-      display: block;
-      position: absolute;
-      inset: 100% 0 0;
-      z-index: -1;
-      cursor: default;
-      user-select: none;
     }
 
     /* ── Edit input ─────────────────────────────────── */
@@ -357,20 +265,22 @@
       line-height: 1;
     }
 
-    /* ── Scrollbar ──────────────────────────────────── */
+    /* ── Misc ───────────────────────────────────────── */
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    @media (max-width: 500px) { .hide-mobile { display: none; } }
   </style>
 </head>
 <body>
 
-<!-- Header (shown after PDF loaded) -->
+<!-- ── Header ──────────────────────────────────────────────────── -->
 <header id="header">
   <div class="header-left">
     <div class="logo">
       <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
-        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
       </svg>
     </div>
     <span class="header-title">Éditeur PDF</span>
@@ -378,26 +288,34 @@
   </div>
   <div class="header-right">
     <div class="stats-pill">
-      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+      </svg>
       <span id="pages-count"></span>
       <span style="color:var(--border)">·</span>
       <span id="items-count"></span>
-      <span style="color:var(--border)" id="mod-sep" style="display:none">·</span>
-      <span id="mod-count-badge"></span>
+      <span id="mod-sep" style="display:none;color:var(--border)">·</span>
+      <span id="mod-count-badge" style="color:#d97706;font-weight:600"></span>
     </div>
     <button class="btn btn-ghost" id="new-pdf-btn">
-      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/>
+        <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+      </svg>
       <span class="hide-mobile">Nouveau PDF</span>
     </button>
     <button class="btn btn-primary" id="export-btn" disabled>
-      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
       Exporter
       <span class="mod-badge" id="export-badge"></span>
     </button>
   </div>
 </header>
 
-<!-- Drop Zone -->
+<!-- ── Drop Zone ───────────────────────────────────────────────── -->
 <div id="dropzone-wrapper">
   <div id="dropzone">
     <div class="drop-icon">
@@ -411,155 +329,196 @@
       <p class="drop-sub" style="margin-top:4px">Glissez-déposez votre fichier ici, ou cliquez pour parcourir</p>
     </div>
     <span class="drop-pill">
-      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+      </svg>
       Fichiers PDF uniquement
     </span>
   </div>
 </div>
 
-<!-- Loading -->
+<!-- ── Loading ─────────────────────────────────────────────────── -->
 <div id="loading">
   <div class="spinner"></div>
   <div style="text-align:center">
     <p class="loading-title">Chargement du PDF…</p>
-    <p class="loading-sub" style="margin-top:4px">Détection des zones de texte</p>
+    <p class="loading-sub" style="margin-top:4px">Détection des zones de texte en cours</p>
   </div>
   <div class="progress-track"><div id="progress-bar"></div></div>
-  <p id="progress-pct">0%</p>
+  <p id="progress-pct">0 %</p>
 </div>
 
-<!-- Pages -->
+<!-- ── Pages ───────────────────────────────────────────────────── -->
 <div id="pages-container"></div>
 
-<!-- Floating edit input -->
+<!-- ── Floating edit input ─────────────────────────────────────── -->
 <input id="edit-input" type="text" spellcheck="false" autocomplete="off" />
 
-<style>
-  @media (max-width: 500px) { .hide-mobile { display: none; } }
-</style>
+<script>
+  // ── Configure pdf.js worker (UMD build — compatible PC + mobile + file://) ──
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://unpkg.com/pdfjs-dist@4.10.38/build/pdf.worker.min.js';
 
-<script type="module">
-  import {
-    getDocument,
-    GlobalWorkerOptions,
-    TextLayer
-  } from 'https://unpkg.com/pdfjs-dist@4.10.38/build/pdf.min.mjs';
+  // ── State ──────────────────────────────────────────────────────────────────
+  var pages       = [];     // rendered page data
+  var mods        = {};     // key "pIdx-iIdx" → modification object
+  var modCount    = 0;
+  var exportBytes = null;   // preserved for pdf-lib export
+  var fileName    = '';
 
-  GlobalWorkerOptions.workerSrc =
-    'https://unpkg.com/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
+  // ── DOM refs ───────────────────────────────────────────────────────────────
+  var dropzoneWrap  = document.getElementById('dropzone-wrapper');
+  var dropzoneEl    = document.getElementById('dropzone');
+  var loadingEl     = document.getElementById('loading');
+  var pagesEl       = document.getElementById('pages-container');
+  var headerEl      = document.getElementById('header');
+  var editInput     = document.getElementById('edit-input');
+  var exportBtn     = document.getElementById('export-btn');
+  var exportBadge   = document.getElementById('export-badge');
+  var newPdfBtn     = document.getElementById('new-pdf-btn');
+  var progressBar   = document.getElementById('progress-bar');
+  var progressPct   = document.getElementById('progress-pct');
+  var fileNameEl    = document.getElementById('file-name');
+  var pagesCount    = document.getElementById('pages-count');
+  var itemsCount    = document.getElementById('items-count');
+  var modBadge      = document.getElementById('mod-count-badge');
+  var modSep        = document.getElementById('mod-sep');
 
-  // ── State ───────────────────────────────────────────────────────────
-  let pages       = [];          // { pageIndex, canvas, width, height, scale, viewport, textContent, textItems }
-  let mods        = new Map();   // "pIdx-iIdx" → { pageIndex, itemIndex, originalText, newText, item }
-  let exportBytes = null;        // Uint8Array kept for pdf-lib
-  let fileName    = '';
-
-  // ── DOM ─────────────────────────────────────────────────────────────
-  const $ = id => document.getElementById(id);
-  const dropzoneWrap = $('dropzone-wrapper');
-  const dropzone     = $('dropzone');
-  const loadingEl    = $('loading');
-  const pagesEl      = $('pages-container');
-  const header       = $('header');
-  const editInput    = $('edit-input');
-  const exportBtn    = $('export-btn');
-  const exportBadge  = $('export-badge');
-  const newPdfBtn    = $('new-pdf-btn');
-  const progressBar  = $('progress-bar');
-  const progressPct  = $('progress-pct');
-  const fileNameEl   = $('file-name');
-  const pagesCount   = $('pages-count');
-  const itemsCount   = $('items-count');
-  const modBadge     = $('mod-count-badge');
-  const modSep       = $('mod-sep');
-
-  // ── File picking ────────────────────────────────────────────────────
-  dropzone.addEventListener('click', pickFile);
-  newPdfBtn.addEventListener('click', pickFile);
-
+  // ── File picking ───────────────────────────────────────────────────────────
   function pickFile() {
-    const inp = document.createElement('input');
+    var inp = document.createElement('input');
     inp.type = 'file';
     inp.accept = '.pdf,application/pdf';
-    inp.onchange = e => { const f = e.target.files[0]; if (f) loadPdf(f); };
+    inp.onchange = function(e) { var f = e.target.files[0]; if (f) loadPdf(f); };
     inp.click();
   }
 
-  dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragging'); });
-  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragging'));
-  dropzone.addEventListener('drop', e => {
+  dropzoneEl.addEventListener('click', pickFile);
+  newPdfBtn.addEventListener('click', pickFile);
+
+  dropzoneEl.addEventListener('dragover', function(e) {
     e.preventDefault();
-    dropzone.classList.remove('dragging');
-    const f = e.dataTransfer.files[0];
-    if (f?.type === 'application/pdf') loadPdf(f);
+    dropzoneEl.classList.add('dragging');
+  });
+  dropzoneEl.addEventListener('dragleave', function() {
+    dropzoneEl.classList.remove('dragging');
+  });
+  dropzoneEl.addEventListener('drop', function(e) {
+    e.preventDefault();
+    dropzoneEl.classList.remove('dragging');
+    var f = e.dataTransfer.files[0];
+    if (f && f.type === 'application/pdf') loadPdf(f);
   });
 
-  // ── Load PDF ────────────────────────────────────────────────────────
-  async function loadPdf(file) {
-    fileName = file.name;
-    pages = [];
-    mods.clear();
-    updateHeader();
+  // ── Load PDF ───────────────────────────────────────────────────────────────
+  function loadPdf(file) {
+    fileName  = file.name;
+    pages     = [];
+    mods      = {};
+    modCount  = 0;
 
     dropzoneWrap.style.display = 'none';
     loadingEl.style.display    = 'flex';
     pagesEl.style.display      = 'none';
     pagesEl.innerHTML          = '';
-    header.style.display       = 'none';
-
-    const buf = await file.arrayBuffer();
-    exportBytes = new Uint8Array(buf.slice(0));
-    const renderBytes = new Uint8Array(buf.slice(0));
-
-    const pdf = await getDocument({ data: renderBytes }).promise;
-    const n   = pdf.numPages;
-
-    for (let i = 1; i <= n; i++) {
-      const page       = await pdf.getPage(i);
-      const maxW       = Math.min(window.innerWidth - 48, 900);
-      const unscaled   = page.getViewport({ scale: 1 });
-      const scale      = maxW / unscaled.width;
-      const viewport   = page.getViewport({ scale });
-
-      const canvas = document.createElement('canvas');
-      canvas.width  = Math.floor(viewport.width);
-      canvas.height = Math.floor(viewport.height);
-      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-
-      const textContent = await page.getTextContent();
-      const textItems   = textContent.items.filter(it => it.str && it.str.trim());
-
-      pages.push({ pageIndex: i - 1, canvas, width: canvas.width, height: canvas.height, scale, viewport, textContent, textItems });
-
-      const pct = Math.round((i / n) * 100);
-      progressBar.style.width = pct + '%';
-      progressPct.textContent = pct + '%';
-    }
-
-    loadingEl.style.display = 'none';
-    pagesEl.style.display   = 'block';
-    header.style.display    = 'flex';
+    headerEl.style.display     = 'none';
+    progressBar.style.width    = '0';
+    progressPct.textContent    = '0 %';
     updateHeader();
-    renderPages();
+
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var arrayBuffer = e.target.result;
+
+      // Two independent copies: one for rendering, one for export
+      exportBytes = new Uint8Array(arrayBuffer.slice(0));
+      var renderBytes = new Uint8Array(arrayBuffer.slice(0));
+
+      var loadingTask = pdfjsLib.getDocument({ data: renderBytes });
+
+      loadingTask.promise.then(function(pdf) {
+        var numPages = pdf.numPages;
+        var pagesProcessed = 0;
+
+        function processPage(i) {
+          pdf.getPage(i).then(function(page) {
+            var maxW    = Math.min(window.innerWidth - 48, 900);
+            var unscaled = page.getViewport({ scale: 1 });
+            var scale   = maxW / unscaled.width;
+            var viewport = page.getViewport({ scale: scale });
+
+            var canvas = document.createElement('canvas');
+            canvas.width  = Math.floor(viewport.width);
+            canvas.height = Math.floor(viewport.height);
+            var ctx = canvas.getContext('2d');
+
+            page.render({ canvasContext: ctx, viewport: viewport }).promise.then(function() {
+              return page.getTextContent();
+            }).then(function(textContent) {
+              var textItems = textContent.items.filter(function(it) {
+                return it.str && it.str.trim().length > 0;
+              });
+
+              pages.push({
+                pageIndex:   i - 1,
+                canvas:      canvas,
+                width:       canvas.width,
+                height:      canvas.height,
+                scale:       scale,
+                viewport:    viewport,
+                textContent: textContent,
+                textItems:   textItems
+              });
+
+              pagesProcessed++;
+              var pct = Math.round((pagesProcessed / numPages) * 100);
+              progressBar.style.width = pct + '%';
+              progressPct.textContent = pct + ' %';
+
+              if (pagesProcessed < numPages) {
+                processPage(i + 1);
+              } else {
+                // Sort by pageIndex (sequential order)
+                pages.sort(function(a, b) { return a.pageIndex - b.pageIndex; });
+                loadingEl.style.display = 'none';
+                pagesEl.style.display   = 'block';
+                headerEl.style.display  = 'flex';
+                updateHeader();
+                renderPages();
+              }
+            });
+          });
+        }
+
+        processPage(1);
+
+      }).catch(function(err) {
+        loadingEl.style.display    = 'none';
+        dropzoneWrap.style.display = 'flex';
+        alert('Impossible de lire ce PDF : ' + err.message);
+      });
+    };
+
+    reader.readAsArrayBuffer(file);
   }
 
-  // ── Render pages ─────────────────────────────────────────────────
+  // ── Render pages ───────────────────────────────────────────────────────────
   function renderPages() {
     pagesEl.innerHTML = '';
 
-    const infoBar = document.createElement('div');
-    infoBar.className = 'info-bar';
-    infoBar.innerHTML = '<b>Cliquez</b> sur n\'importe quel texte dans le PDF pour le modifier directement. Appuyez sur <b>Entrée</b> pour valider, <b>Échap</b> pour annuler. Puis cliquez sur <b>Exporter</b>.';
-    pagesEl.appendChild(infoBar);
+    var info = document.createElement('div');
+    info.className = 'info-bar';
+    info.innerHTML = '<b>Cliquez</b> sur n\'importe quel texte dans le PDF pour le modifier. Appuyez sur <b>Entrée</b> pour valider, <b>Échap</b> pour annuler. Cliquez ensuite sur <b>Exporter</b>.';
+    pagesEl.appendChild(info);
 
-    for (const page of pages) {
-      const wrap = document.createElement('div');
+    pages.forEach(function(page) {
+      var wrap = document.createElement('div');
       wrap.className = 'page-wrapper';
       wrap.style.width  = page.width  + 'px';
       wrap.style.height = page.height + 'px';
 
       // Canvas copy
-      const cv = document.createElement('canvas');
+      var cv = document.createElement('canvas');
       cv.width  = page.canvas.width;
       cv.height = page.canvas.height;
       cv.style.width  = page.width  + 'px';
@@ -567,64 +526,125 @@
       cv.getContext('2d').drawImage(page.canvas, 0, 0);
       wrap.appendChild(cv);
 
-      // Text layer div
-      const tlDiv = document.createElement('div');
+      // Text layer
+      var tlDiv = document.createElement('div');
       tlDiv.className = 'textLayer';
       wrap.appendChild(tlDiv);
 
-      // Badge
-      const badge = document.createElement('div');
-      badge.className = 'page-badge';
+      // Page badge
+      var badge = document.createElement('div');
+      badge.className   = 'page-badge';
       badge.textContent = 'Page ' + (page.pageIndex + 1);
       wrap.appendChild(badge);
 
       pagesEl.appendChild(wrap);
 
-      // Render TextLayer
-      const tl = new TextLayer({ textContentSource: page.textContent, container: tlDiv, viewport: page.viewport });
-      tl.render().then(() => attachSpanHandlers(tlDiv, page));
-    }
-  }
+      // Build text layer with pdf.js TextLayer API
+      var tl = new pdfjsLib.TextLayer({
+        textContentSource: page.textContent,
+        container:         tlDiv,
+        viewport:          page.viewport
+      });
 
-  function attachSpanHandlers(tlDiv, page) {
-    const spans = Array.from(tlDiv.querySelectorAll('span:not(.markedContent)'));
-    let ni = 0;
-    spans.forEach(span => {
-      if (!span.textContent?.trim()) return;
-      const idx  = ni++;
-      const item = page.textItems[idx];
-      if (!item) return;
-
-      const key = page.pageIndex + '-' + idx;
-      const mod = mods.get(key);
-      if (mod) { span.textContent = mod.newText; span.dataset.modified = 'true'; }
-
-      span.style.cursor        = 'text';
-      span.style.pointerEvents = 'all';
-      span.addEventListener('click', e => {
-        e.stopPropagation();
-        openEdit(span, page, idx, item, mod?.newText ?? item.str);
+      tl.render().then(function() {
+        attachSpanHandlers(tlDiv, page);
+      }).catch(function() {
+        // Fallback: manual span positioning if TextLayer fails
+        manualSpans(tlDiv, page);
       });
     });
   }
 
-  // ── Inline edit ──────────────────────────────────────────────────
-  let _span = null, _page = null, _item = null, _itemIdx = -1;
+  // ── Attach click handlers to TextLayer spans ──────────────────────────────
+  function attachSpanHandlers(tlDiv, page) {
+    var allSpans = Array.from(tlDiv.querySelectorAll('span'));
+    var ni = 0;
+
+    allSpans.forEach(function(span) {
+      if (!span.textContent || !span.textContent.trim()) return;
+      var idx  = ni++;
+      var item = page.textItems[idx];
+      if (!item) return;
+
+      var key = page.pageIndex + '-' + idx;
+      var mod = mods[key];
+      if (mod) {
+        span.textContent      = mod.newText;
+        span.dataset.modified = 'true';
+      }
+
+      span.style.cursor        = 'text';
+      span.style.pointerEvents = 'all';
+
+      span.addEventListener('click', (function(s, pg, i, it) {
+        return function(e) {
+          e.stopPropagation();
+          var cur = mods[pg.pageIndex + '-' + i];
+          openEdit(s, pg, i, it, cur ? cur.newText : it.str);
+        };
+      })(span, page, idx, item));
+    });
+  }
+
+  // ── Fallback: manual span positioning (if TextLayer API unavailable) ───────
+  function manualSpans(tlDiv, page) {
+    page.textItems.forEach(function(item, idx) {
+      var tx = item.transform;
+      var span = document.createElement('span');
+
+      var scaleX = Math.sqrt(tx[0]*tx[0] + tx[1]*tx[1]);
+      var scaleY = Math.sqrt(tx[2]*tx[2] + tx[3]*tx[3]);
+      var angle  = Math.atan2(tx[1], tx[0]);
+      var fs     = scaleY * page.scale;
+      var canvasH = page.height;
+
+      var x = tx[4] * page.scale;
+      var y = canvasH - (tx[5] * page.scale) - fs;
+
+      span.textContent       = item.str;
+      span.style.position    = 'absolute';
+      span.style.left        = x + 'px';
+      span.style.top         = y + 'px';
+      span.style.fontSize    = fs + 'px';
+      span.style.color       = 'transparent';
+      span.style.whiteSpace  = 'pre';
+      span.style.cursor      = 'text';
+      span.style.transformOrigin = '0% 0%';
+      if (angle !== 0) span.style.transform = 'rotate(' + (-angle * 180 / Math.PI) + 'deg)';
+
+      var key = page.pageIndex + '-' + idx;
+      var mod = mods[key];
+      if (mod) { span.textContent = mod.newText; span.dataset.modified = 'true'; }
+
+      span.addEventListener('click', (function(s, pg, i, it) {
+        return function(e) {
+          e.stopPropagation();
+          var cur = mods[pg.pageIndex + '-' + i];
+          openEdit(s, pg, i, it, cur ? cur.newText : it.str);
+        };
+      })(span, page, idx, item));
+
+      tlDiv.appendChild(span);
+    });
+  }
+
+  // ── Inline edit ────────────────────────────────────────────────────────────
+  var _span = null, _page = null, _item = null, _itemIdx = -1;
 
   function openEdit(span, page, idx, item, currentText) {
-    commitEdit();           // close any open edit first
+    commitEdit(true);
 
-    const r = span.getBoundingClientRect();
-    const tx = item.transform;
-    const scaleY = Math.sqrt(tx[2] * tx[2] + tx[3] * tx[3]);
-    const fs = Math.max(scaleY * page.scale, 8);
+    var r  = span.getBoundingClientRect();
+    var tx = item.transform;
+    var scaleY = Math.sqrt(tx[2]*tx[2] + tx[3]*tx[3]);
+    var fs = Math.max(scaleY * page.scale, 8);
 
     _span    = span;
     _page    = page;
     _item    = item;
     _itemIdx = idx;
 
-    editInput.value = currentText;
+    editInput.value           = currentText;
     editInput.style.display   = 'block';
     editInput.style.top       = (r.top  + window.scrollY - 3) + 'px';
     editInput.style.left      = (r.left + window.scrollX - 4) + 'px';
@@ -636,90 +656,118 @@
     editInput.select();
   }
 
-  function commitEdit(save = true) {
+  function commitEdit(save) {
     if (editInput.style.display === 'none') return;
+    if (save === undefined) save = true;
+
     if (save && _span) {
-      const newText = editInput.value;
-      const key     = _page.pageIndex + '-' + _itemIdx;
-      mods.set(key, { pageIndex: _page.pageIndex, itemIndex: _itemIdx, originalText: _item.str, newText, item: _item });
-      _span.textContent       = newText;
-      _span.dataset.modified  = 'true';
+      var newText = editInput.value;
+      var key     = _page.pageIndex + '-' + _itemIdx;
+      var isNew   = !mods[key];
+
+      mods[key] = {
+        pageIndex:    _page.pageIndex,
+        itemIndex:    _itemIdx,
+        originalText: _item.str,
+        newText:      newText,
+        item:         _item
+      };
+
+      if (isNew) modCount++;
+      _span.textContent      = newText;
+      _span.dataset.modified = 'true';
       updateHeader();
     }
+
     editInput.style.display = 'none';
     _span = null; _page = null; _item = null; _itemIdx = -1;
   }
 
-  editInput.addEventListener('keydown', e => {
+  editInput.addEventListener('keydown', function(e) {
     if (e.key === 'Enter')  { e.preventDefault(); commitEdit(true);  }
     if (e.key === 'Escape') { commitEdit(false); }
   });
-  editInput.addEventListener('blur', () => commitEdit(true));
-  document.addEventListener('click', e => { if (e.target !== editInput) commitEdit(true); });
+  editInput.addEventListener('blur', function() { commitEdit(true); });
+  document.addEventListener('click', function(e) {
+    if (e.target !== editInput) commitEdit(true);
+  });
 
-  // ── Header ───────────────────────────────────────────────────────
+  // ── Header update ──────────────────────────────────────────────────────────
   function updateHeader() {
-    const total  = pages.reduce((a, p) => a + p.textItems.length, 0);
-    const n      = mods.size;
-    const hasMod = n > 0;
+    var total  = pages.reduce(function(a, p) { return a + p.textItems.length; }, 0);
+    var hasMod = modCount > 0;
 
-    fileNameEl.textContent  = fileName ? '— ' + fileName : '';
-    pagesCount.textContent  = pages.length + ' page' + (pages.length > 1 ? 's' : '');
-    itemsCount.textContent  = total + ' zones de texte';
+    fileNameEl.textContent = fileName ? '— ' + fileName : '';
+    pagesCount.textContent = pages.length + ' page' + (pages.length > 1 ? 's' : '');
+    itemsCount.textContent = total + ' zones de texte';
 
-    modBadge.textContent    = n + ' modifié' + (n > 1 ? 's' : '');
-    modBadge.style.display  = hasMod ? 'inline' : 'none';
-    modSep.style.display    = hasMod ? 'inline' : 'none';
+    modBadge.textContent  = modCount + ' modifié' + (modCount > 1 ? 's' : '');
+    modBadge.style.display = hasMod ? 'inline' : 'none';
+    modSep.style.display   = hasMod ? 'inline' : 'none';
 
-    exportBtn.disabled          = !hasMod;
-    exportBadge.textContent     = n;
-    exportBadge.style.display   = hasMod ? 'inline' : 'none';
-    exportBtn.style.opacity     = hasMod ? '1' : '.4';
+    exportBtn.disabled         = !hasMod;
+    exportBadge.textContent    = modCount;
+    exportBadge.style.display  = hasMod ? 'inline' : 'none';
   }
 
-  // ── Export ──────────────────────────────────────────────────────
-  exportBtn.addEventListener('click', doExport);
-
-  async function doExport() {
-    if (!exportBytes || mods.size === 0) return;
+  // ── Export ─────────────────────────────────────────────────────────────────
+  exportBtn.addEventListener('click', function() {
+    if (!exportBytes || modCount === 0) return;
 
     exportBtn.disabled    = true;
     exportBtn.textContent = 'Export en cours…';
 
-    try {
-      const { PDFDocument, rgb, StandardFonts } = PDFLib;
-      const doc  = await PDFDocument.load(exportBytes);
-      const font = await doc.embedFont(StandardFonts.Helvetica);
+    var keys = Object.keys(mods);
+    var modList = keys.map(function(k) { return mods[k]; })
+                      .filter(function(m) { return m.newText !== m.originalText; });
 
-      for (const [, mod] of mods) {
-        if (mod.newText === mod.originalText) continue;
+    PDFLib.PDFDocument.load(exportBytes).then(function(doc) {
+      return doc.embedFont(PDFLib.StandardFonts.Helvetica).then(function(font) {
+        modList.forEach(function(mod) {
+          var pdfPage = doc.getPages()[mod.pageIndex];
+          var tx      = mod.item.transform;
+          var origX   = tx[4];
+          var origY   = tx[5];
+          var scaleY  = Math.sqrt(tx[2]*tx[2] + tx[3]*tx[3]);
+          var fs      = Math.max(scaleY, 6);
+          var origW   = mod.item.width > 0 ? mod.item.width : fs * mod.originalText.length * 0.6;
+          var coverW  = Math.max(origW, fs * mod.newText.length * 0.6) + 4;
 
-        const pdfPage = doc.getPages()[mod.pageIndex];
-        const tx      = mod.item.transform;
-        const origX   = tx[4];
-        const origY   = tx[5];
-        const scaleY  = Math.sqrt(tx[2] * tx[2] + tx[3] * tx[3]);
-        const fs      = Math.max(scaleY, 6);
-        const origW   = mod.item.width > 0 ? mod.item.width : fs * mod.originalText.length * 0.6;
-        const coverW  = Math.max(origW, fs * mod.newText.length * 0.6) + 4;
+          pdfPage.drawRectangle({
+            x: origX - 1, y: origY - fs * 0.25,
+            width: coverW, height: fs * 1.35,
+            color: PDFLib.rgb(1,1,1), opacity: 1
+          });
+          pdfPage.drawText(mod.newText, {
+            x: origX, y: origY,
+            font: font, size: fs,
+            color: PDFLib.rgb(0,0,0)
+          });
+        });
 
-        pdfPage.drawRectangle({ x: origX - 1, y: origY - fs * 0.25, width: coverW, height: fs * 1.35, color: rgb(1,1,1), opacity: 1 });
-        pdfPage.drawText(mod.newText, { x: origX, y: origY, font, size: fs, color: rgb(0,0,0) });
-      }
-
-      const out  = await doc.save();
-      const blob = new Blob([out], { type: 'application/pdf' });
-      const url  = URL.createObjectURL(blob);
-      const a    = Object.assign(document.createElement('a'), { href: url, download: fileName.replace(/\.pdf$/i, '') + '_modifié.pdf' });
+        return doc.save();
+      });
+    }).then(function(out) {
+      var blob = new Blob([out], { type: 'application/pdf' });
+      var url  = URL.createObjectURL(blob);
+      var a    = document.createElement('a');
+      a.href     = url;
+      a.download = fileName.replace(/\.pdf$/i, '') + '_modifié.pdf';
       a.click();
       URL.revokeObjectURL(url);
-    } catch (err) {
+    }).catch(function(err) {
       alert('Erreur lors de l\'export : ' + err.message);
-    } finally {
-      exportBtn.disabled = false;
+    }).finally(function() {
+      exportBtn.disabled    = false;
+      exportBtn.innerHTML   =
+        '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">' +
+        '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>' +
+        '<polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>' +
+        ' Exporter <span class="mod-badge" id="export-badge" style="display:inline;background:rgba(255,255,255,.25);border-radius:999px;padding:1px 7px;font-size:11px;">' +
+        modCount + '</span>';
       updateHeader();
-    }
-  }
+    });
+  });
 </script>
 </body>
 </html>
